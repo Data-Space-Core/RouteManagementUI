@@ -12,7 +12,7 @@ ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "*")
 if "*" not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append("*")
 CSRF_TRUSTED_ORIGINS = [
-    origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "https://tenant-a.dil.collab-cloud.eu").split(",") if origin.strip()
+    origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin.strip()
 ]
 
 INSTALLED_APPS = [
@@ -86,11 +86,11 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 KEYCLOAK_BASE_URL = os.getenv("KEYCLOAK_BASE_URL", "https://dil.collab-cloud.eu/auth")
-KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "tenant-a")
+KEYCLOAK_REALM = os.getenv("KEYCLOAK_REALM", "")
 KEYCLOAK_CLIENT_ID = os.getenv("KEYCLOAK_CLIENT_ID", "route-management-ui")
 KEYCLOAK_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "")
 KEYCLOAK_SCOPE = os.getenv("KEYCLOAK_SCOPE", "openid profile email")
-SITE_URL = os.getenv("SITE_URL", "https://tenant-a.dil.collab-cloud.eu/route").rstrip("/")
+SITE_URL = os.getenv("SITE_URL", "https://localhost/route").rstrip("/")
 MANAGEMENT_API_BASE_URL = os.getenv("MANAGEMENT_API_BASE_URL", "https://dil.collab-cloud.eu/management").rstrip("/")
 SITE_PATH_PREFIX = urlparse(SITE_URL).path.rstrip("/")
 FORCE_SCRIPT_NAME = SITE_PATH_PREFIX or None
