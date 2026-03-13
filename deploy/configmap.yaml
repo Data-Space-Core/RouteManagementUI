@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: management-ui-config
+  namespace: management-ui
+data:
+  DJANGO_ALLOWED_HOSTS: dil.collab-cloud.eu
+  DJANGO_CSRF_TRUSTED_ORIGINS: https://dil.collab-cloud.eu
+  KEYCLOAK_BASE_URL: https://dil.collab-cloud.eu/auth
+  KEYCLOAK_MASTER_REALM: master
+  KEYCLOAK_CLIENT_ID: management-ui
+  KEYCLOAK_SCOPE: openid profile email
+  SITE_URL: https://dil.collab-cloud.eu
+  MANAGEMENT_API_BASE_URL: https://dil.collab-cloud.eu/management

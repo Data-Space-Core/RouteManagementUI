@@ -1,0 +1,37 @@
+{
+  "clientId": "management-ui",
+  "name": "Management UI",
+  "description": "Django web UI for DIL platform management",
+  "rootUrl": "https://dil.collab-cloud.eu",
+  "baseUrl": "https://dil.collab-cloud.eu",
+  "adminUrl": "https://dil.collab-cloud.eu",
+  "enabled": true,
+  "protocol": "openid-connect",
+  "publicClient": false,
+  "standardFlowEnabled": true,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": false,
+  "implicitFlowEnabled": false,
+  "redirectUris": [
+    "https://dil.collab-cloud.eu/oidc/callback/"
+  ],
+  "webOrigins": [
+    "https://dil.collab-cloud.eu"
+  ],
+  "attributes": {
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "https://dil.collab-cloud.eu/*"
+  },
+  "defaultClientScopes": [
+    "web-origins",
+    "profile",
+    "email",
+    "roles"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ]
+}

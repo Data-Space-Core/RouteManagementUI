@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: management-ui
+  namespace: management-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: management-ui
+  template:
+    metadata:
+      labels:
+        app: management-ui
+    spec:
+      serviceAccountName: management-ui
+      containers:
+        - name: management-ui
+          image: ghcr.io/data-space-core/management-ui:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: management-ui-config
+            - secretRef:
+                name: management-ui-secret
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
