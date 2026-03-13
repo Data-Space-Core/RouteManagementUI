@@ -8,6 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if host.strip()]
+if "*" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("*")
 CSRF_TRUSTED_ORIGINS = [
     origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "https://tenant-a.dil.collab-cloud.eu").split(",") if origin.strip()
 ]
@@ -90,4 +92,3 @@ KEYCLOAK_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "")
 KEYCLOAK_SCOPE = os.getenv("KEYCLOAK_SCOPE", "openid profile email")
 SITE_URL = os.getenv("SITE_URL", "https://tenant-a.dil.collab-cloud.eu/route").rstrip("/")
 MANAGEMENT_API_BASE_URL = os.getenv("MANAGEMENT_API_BASE_URL", "https://dil.collab-cloud.eu/management").rstrip("/")
-
