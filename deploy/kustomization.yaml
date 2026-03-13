@@ -6,5 +6,3 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
-  - referencegrant.yaml
-  - route.yaml
