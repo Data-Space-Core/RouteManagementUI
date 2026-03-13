@@ -265,6 +265,17 @@
         const defaultNamespace = namespaceSelect.value || "default";
         namespaceSelect.value = defaultNamespace;
         refreshServices();
+        if (!serviceSelect.value && applications.length > 0) {
+          const firstApplication = applications[0];
+          applicationSelect.value = firstApplication.name;
+          if (firstApplication.namespace) {
+            namespaceSelect.value = firstApplication.namespace;
+          }
+          if (!pathPrefixInput.value) {
+            pathPrefixInput.value = `/${firstApplication.name}`;
+          }
+          refreshServices(firstApplication.name);
+        }
       })();
     </script>
   </body>
