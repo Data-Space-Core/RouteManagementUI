@@ -51,7 +51,7 @@
                   {% endfor %}
                 </div>
               {% endif %}
-              <form method="get" action="/login/" class="d-grid">
+              <form method="get" action="{% url 'login' %}" class="d-grid">
                 <button class="btn btn-primary btn-lg" type="submit">Login</button>
               </form>
             </div>
@@ -65,4 +65,3 @@
     </main>
   </body>
 </html>
-

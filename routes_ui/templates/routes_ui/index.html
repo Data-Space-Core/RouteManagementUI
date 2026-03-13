@@ -23,7 +23,7 @@
             <div class="brand-logo" aria-hidden="true">VTT</div>
           </div>
           <span class="badge rounded-pill text-bg-light px-3 py-2">{{ user_label }}</span>
-          <a class="btn btn-outline-secondary" href="/logout/">Sign Out</a>
+          <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Sign Out</a>
         </div>
       </div>
     </header>
@@ -55,7 +55,7 @@
               <p class="text-secondary mb-4">
                 This creates or updates the tenant gateway route for a backend service.
               </p>
-              <form method="post" action="/routes/create/" class="vstack gap-3">
+              <form method="post" action="{% url 'create_route' %}" class="vstack gap-3">
                 {% csrf_token %}
                 <div>
                   <label class="form-label" for="application">Application</label>
@@ -120,7 +120,7 @@
                         <td>{{ route.backend_namespace }}</td>
                         <td>{{ route.service_port }}</td>
                         <td class="text-end">
-                          <form method="post" action="/routes/{{ route.application }}/delete/">
+                          <form method="post" action="{% url 'delete_route' route.application %}">
                             {% csrf_token %}
                             <button class="btn btn-outline-danger" type="submit">Delete</button>
                           </form>
@@ -141,4 +141,3 @@
     </main>
   </body>
 </html>
-

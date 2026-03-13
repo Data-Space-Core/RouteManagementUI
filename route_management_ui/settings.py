@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -68,7 +69,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STORAGES = {
     "default": {
@@ -92,3 +92,6 @@ KEYCLOAK_CLIENT_SECRET = os.getenv("KEYCLOAK_CLIENT_SECRET", "")
 KEYCLOAK_SCOPE = os.getenv("KEYCLOAK_SCOPE", "openid profile email")
 SITE_URL = os.getenv("SITE_URL", "https://tenant-a.dil.collab-cloud.eu/route").rstrip("/")
 MANAGEMENT_API_BASE_URL = os.getenv("MANAGEMENT_API_BASE_URL", "https://dil.collab-cloud.eu/management").rstrip("/")
+SITE_PATH_PREFIX = urlparse(SITE_URL).path.rstrip("/")
+FORCE_SCRIPT_NAME = SITE_PATH_PREFIX or None
+STATIC_URL = f"{SITE_PATH_PREFIX}/static/" if SITE_PATH_PREFIX else "/static/"
