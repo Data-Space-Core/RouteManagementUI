@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: management-ui
+  name: route-management-ui
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/Data-Space-Core/management-ui.git
+    repoURL: https://github.com/Data-Space-Core/RouteManagementUI.git
     targetRevision: HEAD
     path: deploy
   destination:
     server: https://kubernetes.default.svc
-    namespace: management-ui
+    namespace: route-management-ui
   syncPolicy:
     automated:
       prune: true

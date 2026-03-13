@@ -9,11 +9,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY manage.py .
-COPY management_ui ./management_ui
-COPY ui ./ui
+COPY route_management_ui ./route_management_ui
+COPY routes_ui ./routes_ui
 
 RUN python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-CMD ["/bin/sh", "-c", "python manage.py migrate --noinput && gunicorn management_ui.wsgi:application --bind 0.0.0.0:8000"]
+CMD ["/bin/sh", "-c", "python manage.py migrate --noinput && gunicorn route_management_ui.wsgi:application --bind 0.0.0.0:8000"]

@@ -1,10 +1,10 @@
 {
-  "clientId": "management-ui",
-  "name": "Management UI",
-  "description": "Django web UI for DIL platform management",
-  "rootUrl": "https://dil.collab-cloud.eu",
-  "baseUrl": "https://dil.collab-cloud.eu",
-  "adminUrl": "https://dil.collab-cloud.eu",
+  "clientId": "route-management-ui",
+  "name": "Route Management UI",
+  "description": "Django web UI for tenant route management",
+  "rootUrl": "https://tenant-a.dil.collab-cloud.eu/route",
+  "baseUrl": "https://tenant-a.dil.collab-cloud.eu/route",
+  "adminUrl": "https://tenant-a.dil.collab-cloud.eu/route",
   "enabled": true,
   "protocol": "openid-connect",
   "publicClient": false,
@@ -13,14 +13,14 @@
   "serviceAccountsEnabled": false,
   "implicitFlowEnabled": false,
   "redirectUris": [
-    "https://dil.collab-cloud.eu/oidc/callback/"
+    "https://tenant-a.dil.collab-cloud.eu/route/oidc/callback/"
   ],
   "webOrigins": [
-    "https://dil.collab-cloud.eu"
+    "https://tenant-a.dil.collab-cloud.eu"
   ],
   "attributes": {
     "pkce.code.challenge.method": "S256",
-    "post.logout.redirect.uris": "https://dil.collab-cloud.eu/*"
+    "post.logout.redirect.uris": "https://tenant-a.dil.collab-cloud.eu/*"
   },
   "defaultClientScopes": [
     "web-origins",

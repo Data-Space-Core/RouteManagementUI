@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: management-ui
-  namespace: management-ui
+  name: route-management-ui
+  namespace: route-management-ui
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: management-ui
+      app: route-management-ui
   template:
     metadata:
       labels:
-        app: management-ui
+        app: route-management-ui
     spec:
-      serviceAccountName: management-ui
+      serviceAccountName: route-management-ui
       containers:
-        - name: management-ui
-          image: ghcr.io/data-space-core/management-ui:latest
+        - name: route-management-ui
+          image: ghcr.io/data-space-core/route-management-ui:latest
           imagePullPolicy: Always
           envFrom:
             - configMapRef:
-                name: management-ui-config
+                name: route-management-ui-config
             - secretRef:
-                name: management-ui-secret
+                name: route-management-ui-secret
           ports:
             - name: http
               containerPort: 8000
