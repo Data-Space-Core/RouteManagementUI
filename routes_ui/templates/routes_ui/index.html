@@ -242,6 +242,17 @@
           }
         }
 
+        function firstNamespaceWithServices() {
+          return services.length > 0 ? services[0].namespace : "";
+        }
+
+        function firstApplicationForNamespace(namespace) {
+          if (!namespace) {
+            return applications[0] || null;
+          }
+          return applications.find((application) => application.namespace === namespace) || applications[0] || null;
+        }
+
         applicationSelect.addEventListener("change", () => {
           const selectedOption = applicationSelect.selectedOptions[0];
           const namespace = selectedOption ? selectedOption.dataset.namespace : "";
@@ -262,19 +273,34 @@
           refreshPorts(serviceSelect.value);
         });
 
-        const defaultNamespace = namespaceSelect.value || "default";
-        namespaceSelect.value = defaultNamespace;
-        refreshServices();
-        if (!serviceSelect.value && applications.length > 0) {
-          const firstApplication = applications[0];
-          applicationSelect.value = firstApplication.name;
-          if (firstApplication.namespace) {
-            namespaceSelect.value = firstApplication.namespace;
-          }
+        const currentNamespace = namespaceSelect.value;
+        const initialNamespace = services.some((service) => service.namespace === currentNamespace)
+          ? currentNamespace
+          : firstNamespaceWithServices() || currentNamespace;
+        if (initialNamespace) {
+          namespaceSelect.value = initialNamespace;
+        }
+
+        const initialApplication = firstApplicationForNamespace(namespaceSelect.value);
+        if (initialApplication) {
+          applicationSelect.value = initialApplication.name;
           if (!pathPrefixInput.value) {
-            pathPrefixInput.value = `/${firstApplication.name}`;
+            pathPrefixInput.value = `/${initialApplication.name}`;
           }
-          refreshServices(firstApplication.name);
+        }
+
+        refreshServices(applicationSelect.value);
+
+        if (!serviceSelect.value && services.length > 0) {
+          const fallbackNamespace = firstNamespaceWithServices();
+          if (fallbackNamespace) {
+            namespaceSelect.value = fallbackNamespace;
+          }
+          const fallbackApplication = firstApplicationForNamespace(namespaceSelect.value);
+          if (fallbackApplication) {
+            applicationSelect.value = fallbackApplication.name;
+          }
+          refreshServices(applicationSelect.value);
         }
       })();
     </script>
