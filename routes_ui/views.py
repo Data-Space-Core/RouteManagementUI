@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import secrets
+from pathlib import Path
 from urllib.parse import urlencode
 
 import requests
@@ -65,6 +66,7 @@ SYSTEM_NAMESPACES = {"kube-system", "argocd", "route-management-ui"}
 KUBERNETES_DISCOVERY_ERROR = "Unable to load tenant cluster applications and services."
 _core_api: k8s_client.CoreV1Api | None = None
 _apps_api: k8s_client.AppsV1Api | None = None
+_version_text: str | None = None
 
 
 def core_api() -> k8s_client.CoreV1Api:
@@ -177,6 +179,17 @@ def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
         }, f"{KUBERNETES_DISCOVERY_ERROR} {exc}"
 
 
+def app_version() -> str:
+    global _version_text
+    if _version_text is None:
+        version_path = Path(__file__).resolve().parents[1] / "VERSION"
+        try:
+            _version_text = version_path.read_text(encoding="utf-8").strip() or "unknown"
+        except OSError:
+            _version_text = "unknown"
+    return _version_text
+
+
 def user_label(user: dict) -> str:
     return user.get("preferred_username") or user.get("email") or user.get("name") or "authenticated-user"
 
@@ -269,6 +282,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "routes": routes,
             "api_error": api_error,
             "discovery_error": discovery_error,
+            "app_version": app_version(),
             "user": request.session.get("user", {}),
             "user_label": user_label(request.session.get("user", {})),
             **cluster_catalog,

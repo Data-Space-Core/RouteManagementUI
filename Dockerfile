@@ -8,6 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY VERSION .
 COPY manage.py .
 COPY route_management_ui ./route_management_ui
 COPY routes_ui ./routes_ui
