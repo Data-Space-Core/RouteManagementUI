@@ -46,6 +46,15 @@
         </section>
       {% endif %}
 
+      {% if discovery_error %}
+        <section class="card shadow-sm border-0 mb-4">
+          <div class="card-body">
+            <h2 class="h5">Cluster Discovery Error</h2>
+            <pre class="mb-0">{{ discovery_error }}</pre>
+          </div>
+        </section>
+      {% endif %}
+
       <section class="row g-4">
         <div class="col-xl-4">
           <div class="card shadow-sm border-0 h-100">
@@ -59,19 +68,33 @@
                 {% csrf_token %}
                 <div>
                   <label class="form-label" for="application">Application</label>
-                  <input class="form-control" id="application" name="application" placeholder="example-app" required>
+                  <select class="form-select" id="application" name="application" required>
+                    <option value="">Select application</option>
+                    {% for application in applications %}
+                      <option value="{{ application.name }}" data-namespace="{{ application.namespace }}">{{ application.name }} ({{ application.namespace }})</option>
+                    {% endfor %}
+                  </select>
                 </div>
                 <div>
                   <label class="form-label" for="service_name">Service name</label>
-                  <input class="form-control" id="service_name" name="service_name" placeholder="example-app" required>
+                  <select class="form-select" id="service_name" name="service_name" required>
+                    <option value="">Select service</option>
+                  </select>
                 </div>
                 <div>
                   <label class="form-label" for="service_namespace">Service namespace</label>
-                  <input class="form-control" id="service_namespace" name="service_namespace" value="default">
+                  <select class="form-select" id="service_namespace" name="service_namespace" required>
+                    <option value="">Select namespace</option>
+                    {% for namespace in namespaces %}
+                      <option value="{{ namespace }}"{% if namespace == "default" %} selected{% endif %}>{{ namespace }}</option>
+                    {% endfor %}
+                  </select>
                 </div>
                 <div>
                   <label class="form-label" for="service_port">Service port</label>
-                  <input class="form-control" id="service_port" name="service_port" type="number" min="1" max="65535" value="80" required>
+                  <select class="form-select" id="service_port" name="service_port" required>
+                    <option value="80">80</option>
+                  </select>
                 </div>
                 <div>
                   <label class="form-label" for="path_prefix">Path prefix</label>
@@ -139,5 +162,103 @@
         </div>
       </section>
     </main>
+    {{ applications_json|json_script:"applications-data" }}
+    {{ services_json|json_script:"services-data" }}
+    <script>
+      (() => {
+        const applications = JSON.parse(document.getElementById("applications-data").textContent);
+        const services = JSON.parse(document.getElementById("services-data").textContent);
+        const applicationSelect = document.getElementById("application");
+        const namespaceSelect = document.getElementById("service_namespace");
+        const serviceSelect = document.getElementById("service_name");
+        const portSelect = document.getElementById("service_port");
+        const pathPrefixInput = document.getElementById("path_prefix");
+
+        function setOptions(select, options, placeholder) {
+          select.innerHTML = "";
+          const empty = document.createElement("option");
+          empty.value = "";
+          empty.textContent = placeholder;
+          select.appendChild(empty);
+          options.forEach((option) => {
+            const element = document.createElement("option");
+            element.value = String(option.value);
+            element.textContent = option.label;
+            if (option.selected) {
+              element.selected = true;
+            }
+            select.appendChild(element);
+          });
+        }
+
+        function matchingServices() {
+          const selectedNamespace = namespaceSelect.value;
+          const selectedApplication = applicationSelect.value;
+          return services.filter((service) => {
+            if (selectedNamespace && service.namespace !== selectedNamespace) {
+              return false;
+            }
+            if (selectedApplication && service.application !== selectedApplication && service.name !== selectedApplication) {
+              return false;
+            }
+            return true;
+          });
+        }
+
+        function refreshPorts(selectedServiceName) {
+          const selectedNamespace = namespaceSelect.value;
+          const service = services.find(
+            (item) => item.name === selectedServiceName && item.namespace === selectedNamespace,
+          );
+          const ports = (service && service.ports.length ? service.ports : [{ name: "80", port: 80 }]).map((port, index) => ({
+            value: port.port,
+            label: port.name === String(port.port) ? String(port.port) : `${port.port} (${port.name})`,
+            selected: index === 0,
+          }));
+          setOptions(portSelect, ports, "Select port");
+        }
+
+        function refreshServices(preferredServiceName = "") {
+          const candidates = matchingServices();
+          const options = candidates.map((service, index) => ({
+            value: service.name,
+            label: service.name,
+            selected: preferredServiceName ? service.name === preferredServiceName : index === 0,
+          }));
+          setOptions(serviceSelect, options, "Select service");
+          if (options.length > 0) {
+            const selected = options.find((item) => item.selected) || options[0];
+            serviceSelect.value = selected.value;
+            refreshPorts(selected.value);
+          } else {
+            setOptions(portSelect, [], "Select port");
+          }
+        }
+
+        applicationSelect.addEventListener("change", () => {
+          const selectedOption = applicationSelect.selectedOptions[0];
+          const namespace = selectedOption ? selectedOption.dataset.namespace : "";
+          if (namespace) {
+            namespaceSelect.value = namespace;
+          }
+          if (!pathPrefixInput.value && applicationSelect.value) {
+            pathPrefixInput.value = `/${applicationSelect.value}`;
+          }
+          refreshServices(applicationSelect.value);
+        });
+
+        namespaceSelect.addEventListener("change", () => {
+          refreshServices();
+        });
+
+        serviceSelect.addEventListener("change", () => {
+          refreshPorts(serviceSelect.value);
+        });
+
+        const defaultNamespace = namespaceSelect.value || "default";
+        namespaceSelect.value = defaultNamespace;
+        refreshServices();
+      })();
+    </script>
   </body>
 </html>

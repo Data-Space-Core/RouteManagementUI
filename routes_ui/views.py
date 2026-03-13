@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import secrets
 from urllib.parse import urlencode
 
@@ -11,6 +12,9 @@ from django.contrib import messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
+from kubernetes import client as k8s_client
+from kubernetes import config as k8s_config
+from kubernetes.client import ApiException
 
 
 def keycloak_realm_base() -> str:
@@ -55,6 +59,122 @@ def load_routes(token: str) -> tuple[list[dict], str | None]:
     if response.status_code == 200:
         return response.json(), None
     return [], response.text
+
+
+SYSTEM_NAMESPACES = {"kube-system", "argocd", "route-management-ui"}
+KUBERNETES_DISCOVERY_ERROR = "Unable to load tenant cluster applications and services."
+_core_api: k8s_client.CoreV1Api | None = None
+_apps_api: k8s_client.AppsV1Api | None = None
+
+
+def core_api() -> k8s_client.CoreV1Api:
+    global _core_api
+    if _core_api is None:
+        k8s_config.load_incluster_config()
+        _core_api = k8s_client.CoreV1Api()
+    return _core_api
+
+
+def apps_api() -> k8s_client.AppsV1Api:
+    global _apps_api
+    if _apps_api is None:
+        k8s_config.load_incluster_config()
+        _apps_api = k8s_client.AppsV1Api()
+    return _apps_api
+
+
+def include_namespace(name: str) -> bool:
+    return name not in SYSTEM_NAMESPACES
+
+
+def preferred_app_name(metadata: object) -> str:
+    labels = getattr(metadata, "labels", {}) or {}
+    return (
+        labels.get("app.kubernetes.io/name")
+        or labels.get("app")
+        or labels.get("k8s-app")
+        or getattr(metadata, "name", "")
+    )
+
+
+def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
+    try:
+        namespaces = sorted(
+            item.metadata.name
+            for item in core_api().list_namespace().items
+            if item.metadata and item.metadata.name and include_namespace(item.metadata.name)
+        )
+
+        applications_by_key: dict[tuple[str, str], dict[str, str]] = {}
+        for workload in apps_api().list_deployment_for_all_namespaces().items:
+            namespace = workload.metadata.namespace if workload.metadata else ""
+            if not include_namespace(namespace):
+                continue
+            app_name = preferred_app_name(workload.metadata)
+            if app_name:
+                applications_by_key[(namespace, app_name)] = {
+                    "name": app_name,
+                    "namespace": namespace,
+                    "kind": "Deployment",
+                }
+        for workload in apps_api().list_stateful_set_for_all_namespaces().items:
+            namespace = workload.metadata.namespace if workload.metadata else ""
+            if not include_namespace(namespace):
+                continue
+            app_name = preferred_app_name(workload.metadata)
+            if app_name:
+                applications_by_key[(namespace, app_name)] = {
+                    "name": app_name,
+                    "namespace": namespace,
+                    "kind": "StatefulSet",
+                }
+
+        services: list[dict[str, object]] = []
+        for service in core_api().list_service_for_all_namespaces().items:
+            namespace = service.metadata.namespace if service.metadata else ""
+            service_name = service.metadata.name if service.metadata else ""
+            if not include_namespace(namespace) or not service_name or service_name == "kubernetes":
+                continue
+            selector = service.spec.selector or {}
+            app_name = selector.get("app.kubernetes.io/name") or selector.get("app") or selector.get("k8s-app") or service_name
+            ports = [
+                {"name": port.name or str(port.port), "port": int(port.port)}
+                for port in (service.spec.ports or [])
+            ]
+            services.append(
+                {
+                    "name": service_name,
+                    "namespace": namespace,
+                    "application": app_name,
+                    "ports": ports,
+                    "default_port": ports[0]["port"] if ports else 80,
+                }
+            )
+            applications_by_key.setdefault(
+                (namespace, app_name),
+                {"name": app_name, "namespace": namespace, "kind": "Service"},
+            )
+
+        applications = sorted(
+            applications_by_key.values(),
+            key=lambda item: (str(item["namespace"]), str(item["name"])),
+        )
+        services.sort(key=lambda item: (str(item["namespace"]), str(item["name"])))
+        return {
+            "namespaces": namespaces,
+            "applications": applications,
+            "services": services,
+            "applications_json": json.dumps(applications),
+            "services_json": json.dumps(services),
+        }, None
+    except (ApiException, RuntimeError, ValueError) as exc:
+        return {
+            "namespaces": [],
+            "applications": [],
+            "services": [],
+            "applications_json": "[]",
+            "services_json": "[]",
+        }, f"{KUBERNETES_DISCOVERY_ERROR} {exc}"
 
 
 def user_label(user: dict) -> str:
@@ -141,14 +261,17 @@ def index(request: HttpRequest) -> HttpResponse:
         return render(request, "routes_ui/login.html")
 
     routes, api_error = load_routes(token)
+    cluster_catalog, discovery_error = load_cluster_catalog()
     return render(
         request,
         "routes_ui/index.html",
         {
             "routes": routes,
             "api_error": api_error,
+            "discovery_error": discovery_error,
             "user": request.session.get("user", {}),
             "user_label": user_label(request.session.get("user", {})),
+            **cluster_catalog,
         },
     )
 
@@ -192,4 +315,3 @@ def delete_route(request: HttpRequest, application: str) -> HttpResponse:
     else:
         messages.error(request, f"Route delete failed: {response.text}")
     return redirect("index")
-
