@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Route Management</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/sandstone/bootstrap.min.css"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="{% static 'routes_ui/styles.css' %}">
+  </head>
+  <body class="dashboard-shell">
+    <header class="border-bottom bg-white bg-opacity-75 backdrop py-3">
+      <div class="container d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+        <div>
+          <p class="eyebrow mb-1">VTT Technical Research Center</p>
+          <h1 class="h2 mb-0">Tenant Route Management</h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-lockup brand-lockup-compact">
+            <div class="brand-logo" aria-hidden="true">VTT</div>
+          </div>
+          <span class="badge rounded-pill text-bg-light px-3 py-2">{{ user_label }}</span>
+          <a class="btn btn-outline-secondary" href="/logout/">Sign Out</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container py-4">
+      {% if messages %}
+        <section class="mb-4">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'secondary' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      {% if api_error %}
+        <section class="card shadow-sm border-0 mb-4">
+          <div class="card-body">
+            <h2 class="h5">API Error</h2>
+            <pre class="mb-0">{{ api_error }}</pre>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="row g-4">
+        <div class="col-xl-4">
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-body p-4">
+              <p class="eyebrow mb-2">Create Route</p>
+              <h2 class="h4 mb-3">Publish an application</h2>
+              <p class="text-secondary mb-4">
+                This creates or updates the tenant gateway route for a backend service.
+              </p>
+              <form method="post" action="/routes/create/" class="vstack gap-3">
+                {% csrf_token %}
+                <div>
+                  <label class="form-label" for="application">Application</label>
+                  <input class="form-control" id="application" name="application" placeholder="example-app" required>
+                </div>
+                <div>
+                  <label class="form-label" for="service_name">Service name</label>
+                  <input class="form-control" id="service_name" name="service_name" placeholder="example-app" required>
+                </div>
+                <div>
+                  <label class="form-label" for="service_namespace">Service namespace</label>
+                  <input class="form-control" id="service_namespace" name="service_namespace" value="default">
+                </div>
+                <div>
+                  <label class="form-label" for="service_port">Service port</label>
+                  <input class="form-control" id="service_port" name="service_port" type="number" min="1" max="65535" value="80" required>
+                </div>
+                <div>
+                  <label class="form-label" for="path_prefix">Path prefix</label>
+                  <input class="form-control" id="path_prefix" name="path_prefix" placeholder="/example-app">
+                </div>
+                <div>
+                  <label class="form-label" for="host_service_name">Host service name</label>
+                  <input class="form-control" id="host_service_name" name="host_service_name" placeholder="optional host override">
+                </div>
+                <button class="btn btn-primary w-100" type="submit">Save Route</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-8">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <p class="eyebrow mb-1">Published Routes</p>
+                  <h2 class="h4 mb-0">Active tenant routes</h2>
+                </div>
+                <span class="badge rounded-pill text-bg-dark px-3 py-2">{{ routes|length }} total</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Application</th>
+                      <th>Hostname</th>
+                      <th>Path</th>
+                      <th>Backend</th>
+                      <th>Namespace</th>
+                      <th>Port</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for route in routes %}
+                      <tr>
+                        <td class="fw-semibold">{{ route.application }}</td>
+                        <td>{{ route.hostname }}</td>
+                        <td><code>{{ route.path_prefix }}</code></td>
+                        <td>{{ route.backend_service_name }}</td>
+                        <td>{{ route.backend_namespace }}</td>
+                        <td>{{ route.service_port }}</td>
+                        <td class="text-end">
+                          <form method="post" action="/routes/{{ route.application }}/delete/">
+                            {% csrf_token %}
+                            <button class="btn btn-outline-danger" type="submit">Delete</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="7" class="text-center py-4 text-secondary">No tenant routes found.</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+

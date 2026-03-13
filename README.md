@@ -23,4 +23,4 @@ docker push ghcr.io/data-space-core/route-management-ui:latest
 
 ## Keycloak client
 
-Import [keycloak/management-ui-client.json](/home/vmuser/RouteManagementUI/keycloak/management-ui-client.json) into a tenant realm, then copy the generated client secret into the Kubernetes secret used by the deployment.
+Import [keycloak/route-management-ui-client.json](/home/vmuser/RouteManagementUI/keycloak/route-management-ui-client.json) into a tenant realm, then copy the generated client secret into the Kubernetes secret used by the deployment.
