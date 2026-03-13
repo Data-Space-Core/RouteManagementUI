@@ -194,15 +194,19 @@
         function matchingServices() {
           const selectedNamespace = namespaceSelect.value;
           const selectedApplication = applicationSelect.value;
-          return services.filter((service) => {
+          const namespaceServices = services.filter((service) => {
             if (selectedNamespace && service.namespace !== selectedNamespace) {
-              return false;
-            }
-            if (selectedApplication && service.application !== selectedApplication && service.name !== selectedApplication) {
               return false;
             }
             return true;
           });
+          if (!selectedApplication) {
+            return namespaceServices;
+          }
+          const preferredServices = namespaceServices.filter((service) =>
+            service.application === selectedApplication || service.name === selectedApplication,
+          );
+          return preferredServices.length > 0 ? preferredServices : namespaceServices;
         }
 
         function refreshPorts(selectedServiceName) {
