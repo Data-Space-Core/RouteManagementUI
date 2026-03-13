@@ -162,10 +162,19 @@ def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
             key=lambda item: (str(item["namespace"]), str(item["name"])),
         )
         services.sort(key=lambda item: (str(item["namespace"]), str(item["name"])))
+        initial_namespace = services[0]["namespace"] if services else (namespaces[0] if namespaces else "")
+        initial_service = next(
+            (service for service in services if service["namespace"] == initial_namespace),
+            services[0] if services else None,
+        )
+        initial_ports = initial_service["ports"] if initial_service else []
         return {
             "namespaces": namespaces,
             "applications": applications,
             "services": services,
+            "initial_namespace": initial_namespace,
+            "initial_service_name": initial_service["name"] if initial_service else "",
+            "initial_ports": initial_ports,
             "applications_json": json.dumps(applications),
             "services_json": json.dumps(services),
         }, None
@@ -174,6 +183,9 @@ def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
             "namespaces": [],
             "applications": [],
             "services": [],
+            "initial_namespace": "",
+            "initial_service_name": "",
+            "initial_ports": [],
             "applications_json": "[]",
             "services_json": "[]",
         }, f"{KUBERNETES_DISCOVERY_ERROR} {exc}"

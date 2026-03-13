@@ -82,6 +82,11 @@
                   <label class="form-label" for="service_name">Service name</label>
                   <select class="form-select" id="service_name" name="service_name" required>
                     <option value="">Select service</option>
+                    {% for service in services %}
+                      {% if not initial_namespace or service.namespace == initial_namespace %}
+                        <option value="{{ service.name }}"{% if service.name == initial_service_name and service.namespace == initial_namespace %} selected{% endif %}>{{ service.name }}</option>
+                      {% endif %}
+                    {% endfor %}
                   </select>
                 </div>
                 <div>
@@ -89,14 +94,26 @@
                   <select class="form-select" id="service_namespace" name="service_namespace" required>
                     <option value="">Select namespace</option>
                     {% for namespace in namespaces %}
-                      <option value="{{ namespace }}"{% if namespace == "default" %} selected{% endif %}>{{ namespace }}</option>
+                      <option value="{{ namespace }}"{% if namespace == initial_namespace %} selected{% endif %}>{{ namespace }}</option>
                     {% endfor %}
                   </select>
                 </div>
                 <div>
                   <label class="form-label" for="service_port">Service port</label>
                   <select class="form-select" id="service_port" name="service_port" required>
-                    <option value="80">80</option>
+                    {% if initial_ports %}
+                      {% for port in initial_ports %}
+                        <option value="{{ port.port }}"{% if forloop.first %} selected{% endif %}>
+                          {% if port.name == port.port|stringformat:"s" %}
+                            {{ port.port }}
+                          {% else %}
+                            {{ port.port }} ({{ port.name }})
+                          {% endif %}
+                        </option>
+                      {% endfor %}
+                    {% else %}
+                      <option value="80">80</option>
+                    {% endif %}
                   </select>
                 </div>
                 <div>
@@ -109,6 +126,9 @@
                 </div>
                 <button class="btn btn-primary w-100" type="submit">Save Route</button>
               </form>
+              {% if not services %}
+                <p class="small text-danger mt-3 mb-0">No services were discovered from the cluster, so the dropdown cannot populate yet.</p>
+              {% endif %}
             </div>
           </div>
         </div>
