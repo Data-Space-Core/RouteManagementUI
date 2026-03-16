@@ -92,7 +92,8 @@ def include_namespace(name: str) -> bool:
 def preferred_app_name(metadata: object) -> str:
     labels = getattr(metadata, "labels", {}) or {}
     return (
-        labels.get("app.kubernetes.io/name")
+        labels.get("app.kubernetes.io/instance")
+        or labels.get("app.kubernetes.io/name")
         or labels.get("app")
         or labels.get("k8s-app")
         or getattr(metadata, "name", "")
@@ -138,7 +139,13 @@ def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
             if not include_namespace(namespace) or not service_name or service_name == "kubernetes":
                 continue
             selector = service.spec.selector or {}
-            app_name = selector.get("app.kubernetes.io/name") or selector.get("app") or selector.get("k8s-app") or service_name
+            app_name = (
+                selector.get("app.kubernetes.io/instance")
+                or selector.get("app.kubernetes.io/name")
+                or selector.get("app")
+                or selector.get("k8s-app")
+                or service_name
+            )
             ports = [
                 {"name": port.name or str(port.port), "port": int(port.port)}
                 for port in (service.spec.ports or [])
