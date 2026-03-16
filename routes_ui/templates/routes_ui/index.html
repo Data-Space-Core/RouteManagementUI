@@ -98,21 +98,16 @@
                 </div>
                 <div>
                   <label class="form-label" for="service_port">Service port</label>
-                  <select class="form-select" id="service_port" name="service_port" required>
-                    {% if initial_ports %}
-                      {% for port in initial_ports %}
-                        <option value="{{ port.port }}"{% if forloop.first %} selected{% endif %}>
-                          {% if port.name == port.port|stringformat:"s" %}
-                            {{ port.port }}
-                          {% else %}
-                            {{ port.port }} ({{ port.name }})
-                          {% endif %}
-                        </option>
-                      {% endfor %}
-                    {% else %}
-                      <option value="80">80</option>
-                    {% endif %}
-                  </select>
+                  <input
+                    class="form-control"
+                    id="service_port"
+                    name="service_port"
+                    type="number"
+                    min="1"
+                    max="65535"
+                    required
+                    value="{% if initial_ports %}{{ initial_ports.0.port }}{% else %}80{% endif %}"
+                  >
                 </div>
                 <div>
                   <label class="form-label" for="path_prefix">Path prefix</label>
@@ -192,7 +187,7 @@
         const applicationSelect = document.getElementById("application");
         const namespaceSelect = document.getElementById("service_namespace");
         const serviceSelect = document.getElementById("service_name");
-        const portSelect = document.getElementById("service_port");
+        const portInput = document.getElementById("service_port");
         const pathPrefixInput = document.getElementById("path_prefix");
 
         function setOptions(select, options, placeholder) {
@@ -221,12 +216,8 @@
           const service = services.find(
             (item) => item.name === selectedServiceName && item.namespace === selectedNamespace,
           );
-          const ports = (service && service.ports.length ? service.ports : [{ name: "80", port: 80 }]).map((port, index) => ({
-            value: port.port,
-            label: port.name === String(port.port) ? String(port.port) : `${port.port} (${port.name})`,
-            selected: index === 0,
-          }));
-          setOptions(portSelect, ports, "Select port");
+          const ports = service && service.ports.length ? service.ports : [{ name: "80", port: 80 }];
+          portInput.value = String(ports[0].port);
         }
 
         function firstNamespaceWithServices() {
@@ -297,7 +288,7 @@
           serviceSelect.value = initialService.name;
           refreshPorts(initialService.name);
         } else {
-          setOptions(portSelect, [], "Select port");
+          portInput.value = "80";
         }
       })();
     </script>
