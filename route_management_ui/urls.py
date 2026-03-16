@@ -10,6 +10,5 @@ urlpatterns = [
     path("oidc/callback/", views.oidc_callback, name="oidc_callback"),
     path("logout/", views.logout_view, name="logout"),
     path("routes/create/", views.create_route, name="create_route"),
-    path("routes/<str:application>/delete/", views.delete_route, name="delete_route"),
+    path("routes/<str:route_name>/delete/", views.delete_route, name="delete_route"),
 ]
-

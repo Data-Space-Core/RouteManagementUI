@@ -79,6 +79,10 @@
                   </select>
                 </div>
                 <div>
+                  <label class="form-label" for="route_name">Route name</label>
+                  <input class="form-control" id="route_name" name="route_name" placeholder="issuer-admin">
+                </div>
+                <div>
                   <label class="form-label" for="service_name">Service name</label>
                   <select class="form-select" id="service_name" name="service_name" required>
                     <option value="">Select service</option>
@@ -163,7 +167,7 @@
                         <td>{{ route.backend_namespace }}</td>
                         <td>{{ route.service_port }}</td>
                         <td class="text-end">
-                          <form method="post" action="{% url 'delete_route' route.application %}">
+                          <form method="post" action="{% url 'delete_route' route.route_name %}">
                             {% csrf_token %}
                             <button class="btn btn-outline-danger" type="submit">Delete</button>
                           </form>
@@ -194,6 +198,7 @@
         const portInput = document.getElementById("service_port");
         const pathPrefixInput = document.getElementById("path_prefix");
         const hostnameInput = document.getElementById("hostname");
+        const routeNameInput = document.getElementById("route_name");
 
         function setOptions(select, options, placeholder) {
           select.innerHTML = "";
@@ -252,6 +257,9 @@
           if (!pathPrefixInput.value && applicationSelect.value) {
             pathPrefixInput.value = `/${applicationSelect.value}`;
           }
+          if (routeNameInput && !routeNameInput.value && applicationSelect.value) {
+            routeNameInput.value = applicationSelect.value;
+          }
         });
 
         namespaceSelect.addEventListener("change", () => {
@@ -282,6 +290,9 @@
           applicationSelect.value = initialApplication.name;
           if (!pathPrefixInput.value) {
             pathPrefixInput.value = `/${initialApplication.name}`;
+          }
+          if (routeNameInput && !routeNameInput.value) {
+            routeNameInput.value = initialApplication.name;
           }
         }
 

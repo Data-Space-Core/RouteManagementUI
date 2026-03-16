@@ -317,6 +317,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
 
     payload = {
         "application": request.POST.get("application", "").strip(),
+        "route_name": request.POST.get("route_name", "").strip(),
         "service_name": request.POST.get("service_name", "").strip(),
         "service_namespace": request.POST.get("service_namespace", "default").strip() or "default",
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
@@ -331,23 +332,26 @@ def create_route(request: HttpRequest) -> HttpResponse:
     if host_service_name:
         payload["host_service_name"] = host_service_name
 
+    if not payload["route_name"]:
+        payload.pop("route_name")
+
     response = management_api_request("POST", "/routes", token, json=payload)
     if response.status_code == 201:
-        messages.success(request, f"Route {payload['application']} saved.")
+        messages.success(request, f"Route {payload.get('route_name') or payload['application']} saved.")
     else:
         messages.error(request, f"Route save failed: {response.text}")
     return redirect("index")
 
 
 @require_POST
-def delete_route(request: HttpRequest, application: str) -> HttpResponse:
+def delete_route(request: HttpRequest, route_name: str) -> HttpResponse:
     token = ensure_authenticated(request)
     if not token:
         return redirect("login")
 
-    response = management_api_request("DELETE", f"/routes/{application}", token)
+    response = management_api_request("DELETE", f"/routes/{route_name}", token)
     if response.status_code == 200:
-        messages.success(request, f"Route {application} deleted.")
+        messages.success(request, f"Route {route_name} deleted.")
     else:
         messages.error(request, f"Route delete failed: {response.text}")
     return redirect("index")
