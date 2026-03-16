@@ -193,6 +193,7 @@
         const serviceSelect = document.getElementById("service_name");
         const portInput = document.getElementById("service_port");
         const pathPrefixInput = document.getElementById("path_prefix");
+        const hostnameInput = document.getElementById("hostname");
 
         function setOptions(select, options, placeholder) {
           select.innerHTML = "";
@@ -282,6 +283,10 @@
           if (!pathPrefixInput.value) {
             pathPrefixInput.value = `/${initialApplication.name}`;
           }
+        }
+
+        if (hostnameInput && !hostnameInput.value) {
+          hostnameInput.value = window.location.hostname;
         }
 
         const initialService = firstServiceForNamespace(namespaceSelect.value);
