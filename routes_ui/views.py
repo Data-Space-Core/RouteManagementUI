@@ -322,9 +322,12 @@ def create_route(request: HttpRequest) -> HttpResponse:
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
     }
     path_prefix = request.POST.get("path_prefix", "").strip()
+    hostname = request.POST.get("hostname", "").strip()
     host_service_name = request.POST.get("host_service_name", "").strip()
     if path_prefix:
         payload["path_prefix"] = path_prefix
+    if hostname:
+        payload["hostname"] = hostname
     if host_service_name:
         payload["host_service_name"] = host_service_name
 
