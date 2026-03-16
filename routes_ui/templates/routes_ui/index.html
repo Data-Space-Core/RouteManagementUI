@@ -83,9 +83,7 @@
                   <select class="form-select" id="service_name" name="service_name" required>
                     <option value="">Select service</option>
                     {% for service in services %}
-                      {% if not initial_namespace or service.namespace == initial_namespace %}
-                        <option value="{{ service.name }}"{% if service.name == initial_service_name and service.namespace == initial_namespace %} selected{% endif %}>{{ service.name }}</option>
-                      {% endif %}
+                      <option value="{{ service.name }}" data-namespace="{{ service.namespace }}"{% if service.name == initial_service_name and service.namespace == initial_namespace %} selected{% endif %}>{{ service.name }} ({{ service.namespace }})</option>
                     {% endfor %}
                   </select>
                 </div>
@@ -214,18 +212,12 @@
           });
         }
 
-        function matchingServices() {
-          const selectedNamespace = namespaceSelect.value;
-          return services.filter((service) => {
-            if (selectedNamespace && service.namespace !== selectedNamespace) {
-              return false;
-            }
-            return true;
-          });
-        }
-
         function refreshPorts(selectedServiceName) {
-          const selectedNamespace = namespaceSelect.value;
+          const selectedOption = serviceSelect.selectedOptions[0];
+          const selectedNamespace = selectedOption ? selectedOption.dataset.namespace || namespaceSelect.value : namespaceSelect.value;
+          if (selectedNamespace) {
+            namespaceSelect.value = selectedNamespace;
+          }
           const service = services.find(
             (item) => item.name === selectedServiceName && item.namespace === selectedNamespace,
           );
@@ -237,25 +229,15 @@
           setOptions(portSelect, ports, "Select port");
         }
 
-        function refreshServices(preferredServiceName = "") {
-          const candidates = matchingServices();
-          const options = candidates.map((service, index) => ({
-            value: service.name,
-            label: service.name,
-            selected: preferredServiceName ? service.name === preferredServiceName : index === 0,
-          }));
-          setOptions(serviceSelect, options, "Select service");
-          if (options.length > 0) {
-            const selected = options.find((item) => item.selected) || options[0];
-            serviceSelect.value = selected.value;
-            refreshPorts(selected.value);
-          } else {
-            setOptions(portSelect, [], "Select port");
-          }
-        }
-
         function firstNamespaceWithServices() {
           return services.length > 0 ? services[0].namespace : "";
+        }
+
+        function firstServiceForNamespace(namespace) {
+          if (!namespace) {
+            return services[0] || null;
+          }
+          return services.find((service) => service.namespace === namespace) || services[0] || null;
         }
 
         function firstApplicationForNamespace(namespace) {
@@ -274,11 +256,17 @@
           if (!pathPrefixInput.value && applicationSelect.value) {
             pathPrefixInput.value = `/${applicationSelect.value}`;
           }
-          refreshServices(applicationSelect.value);
         });
 
         namespaceSelect.addEventListener("change", () => {
-          refreshServices();
+          const service = firstServiceForNamespace(namespaceSelect.value);
+          if (service) {
+            for (const option of serviceSelect.options) {
+              option.selected = option.value === service.name && option.dataset.namespace === service.namespace;
+            }
+            serviceSelect.value = service.name;
+            refreshPorts(service.name);
+          }
         });
 
         serviceSelect.addEventListener("change", () => {
@@ -301,18 +289,15 @@
           }
         }
 
-        refreshServices(applicationSelect.value);
-
-        if (!serviceSelect.value && services.length > 0) {
-          const fallbackNamespace = firstNamespaceWithServices();
-          if (fallbackNamespace) {
-            namespaceSelect.value = fallbackNamespace;
+        const initialService = firstServiceForNamespace(namespaceSelect.value);
+        if (initialService) {
+          for (const option of serviceSelect.options) {
+            option.selected = option.value === initialService.name && option.dataset.namespace === initialService.namespace;
           }
-          const fallbackApplication = firstApplicationForNamespace(namespaceSelect.value);
-          if (fallbackApplication) {
-            applicationSelect.value = fallbackApplication.name;
-          }
-          refreshServices(applicationSelect.value);
+          serviceSelect.value = initialService.name;
+          refreshPorts(initialService.name);
+        } else {
+          setOptions(portSelect, [], "Select port");
         }
       })();
     </script>
