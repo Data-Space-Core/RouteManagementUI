@@ -5,6 +5,7 @@ import hashlib
 import json
 import secrets
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.parse import urlencode
 
 import requests
@@ -209,6 +210,10 @@ def app_version() -> str:
     return _version_text
 
 
+def default_hostname() -> str:
+    return urlparse(settings.SITE_URL).hostname or ""
+
+
 def user_label(user: dict) -> str:
     return user.get("preferred_username") or user.get("email") or user.get("name") or "authenticated-user"
 
@@ -302,6 +307,7 @@ def index(request: HttpRequest) -> HttpResponse:
             "api_error": api_error,
             "discovery_error": discovery_error,
             "app_version": app_version(),
+            "default_hostname": default_hostname(),
             "user": request.session.get("user", {}),
             "user_label": user_label(request.session.get("user", {})),
             **cluster_catalog,
