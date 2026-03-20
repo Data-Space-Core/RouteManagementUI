@@ -62,13 +62,14 @@
         <div class="col-xl-4">
           <div class="card shadow-sm border-0 h-100">
             <div class="card-body p-4">
-              <p class="eyebrow mb-2">Create Route</p>
-              <h2 class="h4 mb-3">Publish an application</h2>
+              <p class="eyebrow mb-2" id="route-form-eyebrow">Create Route</p>
+              <h2 class="h4 mb-3" id="route-form-title">Publish an application</h2>
               <p class="text-secondary mb-4">
-                This creates or updates the tenant gateway route for a backend service.
+                Use the guided fields for common routes, or paste an advanced route definition to control hostnames and rules directly.
               </p>
-              <form method="post" action="{% url 'create_route' %}" class="vstack gap-3">
+              <form method="post" action="{% url 'create_route' %}" class="vstack gap-3" id="route-form">
                 {% csrf_token %}
+                <input type="hidden" id="original_route_name" name="original_route_name">
                 <div>
                   <label class="form-label" for="application">Application</label>
                   <select class="form-select" id="application" name="application" required>
@@ -125,7 +126,22 @@
                   <label class="form-label" for="host_service_name">Host service name</label>
                   <input class="form-control" id="host_service_name" name="host_service_name" placeholder="optional backend service-name override">
                 </div>
-                <button class="btn btn-primary w-100" type="submit">Save Route</button>
+                <div>
+                  <label class="form-label" for="route_definition_text">Advanced route definition</label>
+                  <textarea
+                    class="form-control route-definition-editor"
+                    id="route_definition_text"
+                    name="route_definition_text"
+                    placeholder='Optional YAML or JSON object, for example: {"hostnames":["app.example.com"],"rules":[...]}'
+                  ></textarea>
+                  <p class="small text-secondary mb-0 mt-2">
+                    Supported top-level keys are <code>hostnames</code> and <code>rules</code>. Leave empty to let the UI build a standard route.
+                  </p>
+                </div>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary w-100" type="submit" id="route-submit-button">Save Route</button>
+                  <button class="btn btn-outline-secondary w-100 route-cancel-button d-none" type="button" id="route-cancel-button">Cancel Edit</button>
+                </div>
               </form>
               {% if not services %}
                 <p class="small text-danger mt-3 mb-0">No services were discovered from the cluster, so the dropdown cannot populate yet.</p>
@@ -167,10 +183,19 @@
                         <td>{{ route.backend_namespace }}</td>
                         <td>{{ route.service_port }}</td>
                         <td class="text-end">
-                          <form method="post" action="{% url 'delete_route' route.route_name %}">
-                            {% csrf_token %}
-                            <button class="btn btn-outline-danger" type="submit">Delete</button>
-                          </form>
+                          <div class="route-action-group">
+                            <button
+                              class="btn btn-outline-secondary route-edit-button"
+                              type="button"
+                              data-route-name="{{ route.route_name }}"
+                            >
+                              Edit
+                            </button>
+                            <form method="post" action="{% url 'delete_route' route.route_name %}">
+                              {% csrf_token %}
+                              <button class="btn btn-outline-danger" type="submit">Delete</button>
+                            </form>
+                          </div>
                         </td>
                       </tr>
                     {% empty %}
@@ -186,35 +211,58 @@
         </div>
       </section>
     </main>
+    {{ routes_json|json_script:"routes-data" }}
     {{ applications_json|json_script:"applications-data" }}
     {{ services_json|json_script:"services-data" }}
     <script>
       (() => {
+        const routes = JSON.parse(document.getElementById("routes-data").textContent);
         const applications = JSON.parse(document.getElementById("applications-data").textContent);
         const services = JSON.parse(document.getElementById("services-data").textContent);
+        const routeForm = document.getElementById("route-form");
+        const routeFormEyebrow = document.getElementById("route-form-eyebrow");
+        const routeFormTitle = document.getElementById("route-form-title");
+        const routeSubmitButton = document.getElementById("route-submit-button");
+        const routeCancelButton = document.getElementById("route-cancel-button");
+        const originalRouteNameInput = document.getElementById("original_route_name");
         const applicationSelect = document.getElementById("application");
         const namespaceSelect = document.getElementById("service_namespace");
         const serviceSelect = document.getElementById("service_name");
         const portInput = document.getElementById("service_port");
         const pathPrefixInput = document.getElementById("path_prefix");
         const hostnameInput = document.getElementById("hostname");
+        const hostServiceNameInput = document.getElementById("host_service_name");
         const routeNameInput = document.getElementById("route_name");
+        const routeDefinitionInput = document.getElementById("route_definition_text");
+        let routeNameTouched = false;
 
-        function setOptions(select, options, placeholder) {
-          select.innerHTML = "";
-          const empty = document.createElement("option");
-          empty.value = "";
-          empty.textContent = placeholder;
-          select.appendChild(empty);
-          options.forEach((option) => {
-            const element = document.createElement("option");
-            element.value = String(option.value);
-            element.textContent = option.label;
-            if (option.selected) {
-              element.selected = true;
-            }
-            select.appendChild(element);
-          });
+        function sanitizeRouteName(value) {
+          return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, "-")
+            .replace(/-{2,}/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 63);
+        }
+
+        function deriveRouteName() {
+          const application = applicationSelect.value;
+          if (!application) {
+            return "";
+          }
+          const hostname = (hostnameInput.value || "default-host").trim().toLowerCase().replace(/\.+$/g, "");
+          const hostKey = hostname ? hostname.replace(/\./g, "-") : "default-host";
+          const path = (pathPrefixInput.value || `/${application}`).replace(/^\/+|\/+$/g, "");
+          const pathKey = path ? path.replace(/\//g, "-") : "root";
+          const port = (portInput.value || "80").trim();
+          return sanitizeRouteName(`${application}-${hostKey}-${pathKey}-${port}`);
+        }
+
+        function maybePopulateRouteName() {
+          if (routeNameTouched || !routeNameInput || originalRouteNameInput.value) {
+            return;
+          }
+          routeNameInput.value = deriveRouteName();
         }
 
         function refreshPorts(selectedServiceName) {
@@ -248,6 +296,95 @@
           return applications.find((application) => application.namespace === namespace) || applications[0] || null;
         }
 
+        function setButtonVisibility(isEditing) {
+          routeCancelButton.classList.toggle("d-none", !isEditing);
+          routeSubmitButton.textContent = isEditing ? "Update Route" : "Save Route";
+          routeFormEyebrow.textContent = isEditing ? "Edit Route" : "Create Route";
+          routeFormTitle.textContent = isEditing ? "Update an application route" : "Publish an application";
+        }
+
+        function selectService(serviceName, namespace) {
+          const option = [...serviceSelect.options].find(
+            (item) => item.value === serviceName && (item.dataset.namespace || "") === namespace,
+          );
+          if (!option) {
+            return;
+          }
+          option.selected = true;
+          serviceSelect.value = option.value;
+          refreshPorts(option.value);
+        }
+
+        function formatRouteDefinition(route) {
+          if (!route.route_definition) {
+            return "";
+          }
+          return JSON.stringify(route.route_definition, null, 2);
+        }
+
+        function applyDefaultSelections() {
+          const currentNamespace = services.some((service) => service.namespace === namespaceSelect.value)
+            ? namespaceSelect.value
+            : firstNamespaceWithServices() || namespaceSelect.value;
+          if (currentNamespace) {
+            namespaceSelect.value = currentNamespace;
+          }
+
+          const initialApplication = firstApplicationForNamespace(namespaceSelect.value);
+          if (initialApplication) {
+            applicationSelect.value = initialApplication.name;
+            if (!pathPrefixInput.value) {
+              pathPrefixInput.value = `/${initialApplication.name}`;
+            }
+          }
+
+          if (hostnameInput && !hostnameInput.value) {
+            hostnameInput.value = window.location.hostname;
+          }
+
+          const initialService = firstServiceForNamespace(namespaceSelect.value);
+          if (initialService) {
+            selectService(initialService.name, initialService.namespace);
+          } else {
+            portInput.value = "80";
+          }
+
+          maybePopulateRouteName();
+        }
+
+        function resetForm() {
+          routeForm.reset();
+          originalRouteNameInput.value = "";
+          hostServiceNameInput.value = "";
+          routeDefinitionInput.value = "";
+          routeNameTouched = false;
+          setButtonVisibility(false);
+          applyDefaultSelections();
+        }
+
+        function startEdit(routeName) {
+          const route = routes.find((item) => item.route_name === routeName);
+          if (!route) {
+            return;
+          }
+          originalRouteNameInput.value = route.route_name || "";
+          applicationSelect.value = route.application || "";
+          namespaceSelect.value = route.service_namespace || route.backend_namespace || "";
+          selectService(
+            route.service_name || route.backend_service_name || "",
+            route.service_namespace || route.backend_namespace || "",
+          );
+          routeNameInput.value = route.route_name || "";
+          routeNameTouched = Boolean(route.route_name);
+          portInput.value = String(route.service_port || 80);
+          pathPrefixInput.value = route.path_prefix || "";
+          hostnameInput.value = route.hostname || "";
+          hostServiceNameInput.value = route.host_service_name || "";
+          routeDefinitionInput.value = formatRouteDefinition(route);
+          setButtonVisibility(true);
+          routeForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
         applicationSelect.addEventListener("change", () => {
           const selectedOption = applicationSelect.selectedOptions[0];
           const namespace = selectedOption ? selectedOption.dataset.namespace : "";
@@ -257,59 +394,50 @@
           if (!pathPrefixInput.value && applicationSelect.value) {
             pathPrefixInput.value = `/${applicationSelect.value}`;
           }
-          if (routeNameInput && !routeNameInput.value && applicationSelect.value) {
-            routeNameInput.value = applicationSelect.value;
-          }
+          maybePopulateRouteName();
         });
 
         namespaceSelect.addEventListener("change", () => {
           const service = firstServiceForNamespace(namespaceSelect.value);
           if (service) {
-            for (const option of serviceSelect.options) {
-              option.selected = option.value === service.name && option.dataset.namespace === service.namespace;
-            }
-            serviceSelect.value = service.name;
-            refreshPorts(service.name);
+            selectService(service.name, service.namespace);
           }
         });
 
         serviceSelect.addEventListener("change", () => {
           refreshPorts(serviceSelect.value);
+          maybePopulateRouteName();
         });
 
-        const currentNamespace = namespaceSelect.value;
-        const initialNamespace = services.some((service) => service.namespace === currentNamespace)
-          ? currentNamespace
-          : firstNamespaceWithServices() || currentNamespace;
-        if (initialNamespace) {
-          namespaceSelect.value = initialNamespace;
+        pathPrefixInput.addEventListener("input", () => {
+          maybePopulateRouteName();
+        });
+
+        hostnameInput.addEventListener("input", () => {
+          maybePopulateRouteName();
+        });
+
+        portInput.addEventListener("input", () => {
+          maybePopulateRouteName();
+        });
+
+        routeCancelButton.addEventListener("click", () => {
+          resetForm();
+        });
+
+        document.querySelectorAll(".route-edit-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            startEdit(button.dataset.routeName);
+          });
+        });
+
+        if (routeNameInput) {
+          routeNameInput.addEventListener("input", () => {
+            routeNameTouched = routeNameInput.value.trim().length > 0;
+          });
         }
 
-        const initialApplication = firstApplicationForNamespace(namespaceSelect.value);
-        if (initialApplication) {
-          applicationSelect.value = initialApplication.name;
-          if (!pathPrefixInput.value) {
-            pathPrefixInput.value = `/${initialApplication.name}`;
-          }
-          if (routeNameInput && !routeNameInput.value) {
-            routeNameInput.value = initialApplication.name;
-          }
-        }
-
-        if (hostnameInput && !hostnameInput.value) {
-          hostnameInput.value = window.location.hostname;
-        }
-
-        const initialService = firstServiceForNamespace(namespaceSelect.value);
-        if (initialService) {
-          for (const option of serviceSelect.options) {
-            option.selected = option.value === initialService.name && option.dataset.namespace === initialService.namespace;
-          }
-          serviceSelect.value = initialService.name;
-          refreshPorts(initialService.name);
-        } else {
-          portInput.value = "80";
-        }
+        resetForm();
       })();
     </script>
   </body>

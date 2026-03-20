@@ -304,6 +304,7 @@ def index(request: HttpRequest) -> HttpResponse:
         "routes_ui/index.html",
         {
             "routes": routes,
+            "routes_json": json.dumps(routes),
             "api_error": api_error,
             "discovery_error": discovery_error,
             "app_version": app_version(),
@@ -324,6 +325,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
     payload = {
         "application": request.POST.get("application", "").strip(),
         "route_name": request.POST.get("route_name", "").strip(),
+        "original_route_name": request.POST.get("original_route_name", "").strip(),
         "service_name": request.POST.get("service_name", "").strip(),
         "service_namespace": request.POST.get("service_namespace", "default").strip() or "default",
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
@@ -331,19 +333,34 @@ def create_route(request: HttpRequest) -> HttpResponse:
     path_prefix = request.POST.get("path_prefix", "").strip()
     hostname = request.POST.get("hostname", "").strip()
     host_service_name = request.POST.get("host_service_name", "").strip()
+    route_definition_text = request.POST.get("route_definition_text", "").strip()
     if path_prefix:
         payload["path_prefix"] = path_prefix
     if hostname:
         payload["hostname"] = hostname
     if host_service_name:
         payload["host_service_name"] = host_service_name
+    if route_definition_text:
+        payload["route_definition_text"] = route_definition_text
 
     if not payload["route_name"]:
         payload.pop("route_name")
+    if not payload["original_route_name"]:
+        payload.pop("original_route_name")
 
-    response = management_api_request("POST", "/routes", token, json=payload)
-    if response.status_code == 201:
-        messages.success(request, f"Route {payload.get('route_name') or payload['application']} saved.")
+    route_label = payload.get("route_name") or payload["application"]
+    if request.POST.get("original_route_name", "").strip():
+        response = management_api_request(
+            "PUT",
+            f"/routes/{request.POST.get('original_route_name', '').strip()}",
+            token,
+            json=payload,
+        )
+    else:
+        response = management_api_request("POST", "/routes", token, json=payload)
+
+    if response.status_code in (200, 201):
+        messages.success(request, f"Route {route_label} saved.")
     else:
         messages.error(request, f"Route save failed: {response.text}")
     return redirect("index")

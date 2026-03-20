@@ -7,7 +7,8 @@
 - authenticates users against the tenant Keycloak realm
 - serves the tenant console at `https://tenant-a.dil.collab-cloud.eu/route`
 - uses the `ManagementAPI` under `https://dil.collab-cloud.eu/management`
-- supports listing, creating, and deleting tenant routes
+- supports listing, creating, editing, and deleting tenant routes
+- supports optional advanced route definitions using YAML or JSON with `hostnames` and `rules`
 
 ## Build
 

@@ -473,6 +473,22 @@ code {
   display: grid;
 }
 
+.route-definition-editor {
+  min-height: 12rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.92rem;
+}
+
+.route-action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.route-cancel-button {
+  margin-top: 0.25rem;
+}
+
 pre {
   white-space: pre-wrap;
   word-break: break-word;
