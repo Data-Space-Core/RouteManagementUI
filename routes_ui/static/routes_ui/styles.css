@@ -46,7 +46,7 @@ code {
 }
 
 .container {
-  width: min(1380px, calc(100% - 2rem));
+  width: min(1560px, calc(100% - 2rem));
   margin: 0 auto;
 }
 
@@ -483,10 +483,29 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  min-width: 11rem;
 }
 
 .route-cancel-button {
   margin-top: 0.25rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 980px;
+}
+
+.table th:last-child,
+.table td:last-child {
+  width: 12rem;
+  min-width: 12rem;
+  white-space: nowrap;
 }
 
 pre {
