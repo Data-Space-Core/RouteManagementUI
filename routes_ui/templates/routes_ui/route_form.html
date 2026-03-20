@@ -100,7 +100,7 @@
                       <option
                         value="{{ service.name }}"
                         data-namespace="{{ service.namespace }}"
-                        {% if service.name == form_route.service_name and service.namespace == form_route.service_namespace %}selected{% endif %}
+                        {% if service.name == selected_service_name and service.namespace == selected_service_namespace %}selected{% endif %}
                       >{{ service.name }} ({{ service.namespace }})</option>
                     {% endfor %}
                   </select>
@@ -112,7 +112,7 @@
                     {% for namespace in namespaces %}
                       <option
                         value="{{ namespace }}"
-                        {% if namespace == form_route.service_namespace %}selected{% endif %}
+                        {% if namespace == selected_service_namespace %}selected{% endif %}
                       >{{ namespace }}</option>
                     {% endfor %}
                   </select>
@@ -141,6 +141,18 @@
                 <div>
                   <label class="form-label" for="host_service_name">Host service name</label>
                   <input class="form-control" id="host_service_name" name="host_service_name" placeholder="optional backend service-name override" value="{{ form_route.host_service_name|default:'' }}">
+                </div>
+                <div>
+                  <label class="form-label" for="cors_allowed_origins_text">CORS allowed origins</label>
+                  <textarea
+                    class="form-control route-definition-editor"
+                    id="cors_allowed_origins_text"
+                    name="cors_allowed_origins_text"
+                    placeholder="dashboard.gx-participant1.dil.collab-cloud.eu"
+                  >{{ cors_allowed_origins_text }}</textarea>
+                  <p class="small text-secondary mb-0 mt-2">
+                    Enter one hostname per line, or separate multiple values with commas. The API will allow all standard HTTP methods automatically and store origins as <code>https://...</code>.
+                  </p>
                 </div>
                 <div>
                   <label class="form-label" for="route_definition_text">Advanced route definition</label>

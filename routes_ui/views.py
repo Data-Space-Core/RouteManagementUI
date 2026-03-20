@@ -243,13 +243,37 @@ def build_route_form_context(
     route_definition_text = ""
     if form_route and form_route.get("route_definition") is not None:
         route_definition_text = json.dumps(form_route["route_definition"], indent=2)
+    cors_allowed_origins_text = ""
+    if form_route:
+        cors_allowed_origins = form_route.get("cors_allowed_origins") or []
+        cors_allowed_origins_text = "\n".join(
+            origin.replace("https://", "", 1) if isinstance(origin, str) else str(origin)
+            for origin in cors_allowed_origins
+        )
+
+    selected_service_name = ""
+    selected_service_namespace = ""
+    if form_route:
+        selected_service_name = str(
+            form_route.get("service_name")
+            or form_route.get("backend_service_name")
+            or ""
+        )
+        selected_service_namespace = str(
+            form_route.get("service_namespace")
+            or form_route.get("backend_namespace")
+            or ""
+        )
 
     context = {
         "api_error": api_error,
         "discovery_error": discovery_error,
         "is_edit": form_route is not None,
         "form_route": form_route or {},
+        "selected_service_name": selected_service_name,
+        "selected_service_namespace": selected_service_namespace,
         "route_definition_text": route_definition_text,
+        "cors_allowed_origins_text": cors_allowed_origins_text,
         **common_template_context(request),
         **cluster_catalog,
     }
@@ -366,6 +390,13 @@ def create_route(request: HttpRequest) -> HttpResponse:
     if not token:
         return redirect("login")
 
+    raw_cors_allowed_origins = request.POST.get("cors_allowed_origins_text", "")
+    cors_allowed_origins = [
+        item.strip()
+        for line in raw_cors_allowed_origins.splitlines()
+        for item in line.split(",")
+        if item.strip()
+    ]
     payload = {
         "application": request.POST.get("application", "").strip(),
         "route_name": request.POST.get("route_name", "").strip(),
@@ -373,6 +404,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
         "service_name": request.POST.get("service_name", "").strip(),
         "service_namespace": request.POST.get("service_namespace", "default").strip() or "default",
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
+        "cors_allowed_origins": cors_allowed_origins,
     }
     path_prefix = request.POST.get("path_prefix", "").strip()
     hostname = request.POST.get("hostname", "").strip()
