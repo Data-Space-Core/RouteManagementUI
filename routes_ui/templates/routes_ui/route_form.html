@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Route Management</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.3/dist/sandstone/bootstrap.min.css"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="{% static 'routes_ui/styles.css' %}">
+  </head>
+  <body class="dashboard-shell">
+    <header class="border-bottom bg-white bg-opacity-75 backdrop py-3">
+      <div class="container d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+        <div>
+          <p class="eyebrow mb-1">VTT Technical Research Center</p>
+          <h1 class="h2 mb-0">
+            Tenant Route Management
+            <span class="app-version">{{ app_version }}</span>
+          </h1>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-lockup brand-lockup-compact">
+            <div class="brand-logo" aria-hidden="true">VTT</div>
+          </div>
+          <span class="badge rounded-pill text-bg-light px-3 py-2">{{ user_label }}</span>
+          <a class="btn btn-outline-secondary" href="{% url 'logout' %}">Sign Out</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container py-4">
+      {% if messages %}
+        <section class="mb-4">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'secondary' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      {% if api_error %}
+        <section class="card shadow-sm border-0 mb-4">
+          <div class="card-body">
+            <h2 class="h5">API Error</h2>
+            <pre class="mb-0">{{ api_error }}</pre>
+          </div>
+        </section>
+      {% endif %}
+
+      {% if discovery_error %}
+        <section class="card shadow-sm border-0 mb-4">
+          <div class="card-body">
+            <h2 class="h5">Cluster Discovery Error</h2>
+            <pre class="mb-0">{{ discovery_error }}</pre>
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="row g-4">
+        <div class="col-xl-8 route-form-column">
+          <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+              <div class="d-flex justify-content-between align-items-center mb-3 table-toolbar">
+                <div>
+                  <p class="eyebrow mb-1">{% if is_edit %}Edit Route{% else %}Create Route{% endif %}</p>
+                  <h2 class="h4 mb-0">{% if is_edit %}Update an application route{% else %}Publish an application{% endif %}</h2>
+                </div>
+                <a class="btn btn-outline-secondary" href="{% url 'index' %}">Back To Routes</a>
+              </div>
+              <p class="text-secondary mb-4">
+                Use the guided fields for common routes, or paste an advanced route definition to control hostnames and rules directly.
+              </p>
+              <form method="post" action="{% url 'create_route' %}" class="vstack gap-3" id="route-form">
+                {% csrf_token %}
+                <input type="hidden" id="original_route_name" name="original_route_name" value="{{ form_route.route_name|default:'' }}">
+                <div>
+                  <label class="form-label" for="application">Application</label>
+                  <select class="form-select" id="application" name="application" required>
+                    <option value="">Select application</option>
+                    {% for application in applications %}
+                      <option
+                        value="{{ application.name }}"
+                        data-namespace="{{ application.namespace }}"
+                        {% if application.name == form_route.application %}selected{% endif %}
+                      >{{ application.name }} ({{ application.namespace }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" for="route_name">Route name</label>
+                  <input class="form-control" id="route_name" name="route_name" placeholder="issuer-admin" value="{{ form_route.route_name|default:'' }}">
+                </div>
+                <div>
+                  <label class="form-label" for="service_name">Service name</label>
+                  <select class="form-select" id="service_name" name="service_name" required>
+                    <option value="">Select service</option>
+                    {% for service in services %}
+                      <option
+                        value="{{ service.name }}"
+                        data-namespace="{{ service.namespace }}"
+                        {% if service.name == form_route.service_name and service.namespace == form_route.service_namespace %}selected{% endif %}
+                      >{{ service.name }} ({{ service.namespace }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" for="service_namespace">Service namespace</label>
+                  <select class="form-select" id="service_namespace" name="service_namespace" required>
+                    <option value="">Select namespace</option>
+                    {% for namespace in namespaces %}
+                      <option
+                        value="{{ namespace }}"
+                        {% if namespace == form_route.service_namespace %}selected{% endif %}
+                      >{{ namespace }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" for="service_port">Service port</label>
+                  <input
+                    class="form-control"
+                    id="service_port"
+                    name="service_port"
+                    type="number"
+                    min="1"
+                    max="65535"
+                    required
+                    value="{{ form_route.service_port|default:initial_ports.0.port|default:80 }}"
+                  >
+                </div>
+                <div>
+                  <label class="form-label" for="path_prefix">Path prefix</label>
+                  <input class="form-control" id="path_prefix" name="path_prefix" placeholder="/example-app" value="{{ form_route.path_prefix|default:'' }}">
+                </div>
+                <div>
+                  <label class="form-label" for="hostname">Hostname</label>
+                  <input class="form-control" id="hostname" name="hostname" value="{{ form_route.hostname|default:default_hostname }}" placeholder="foo.dil.collab-cloud.eu">
+                </div>
+                <div>
+                  <label class="form-label" for="host_service_name">Host service name</label>
+                  <input class="form-control" id="host_service_name" name="host_service_name" placeholder="optional backend service-name override" value="{{ form_route.host_service_name|default:'' }}">
+                </div>
+                <div>
+                  <label class="form-label" for="route_definition_text">Advanced route definition</label>
+                  <textarea
+                    class="form-control route-definition-editor"
+                    id="route_definition_text"
+                    name="route_definition_text"
+                    placeholder='Optional YAML or JSON object, for example: {"hostnames":["app.example.com"],"rules":[...]}'
+                  >{{ route_definition_text }}</textarea>
+                  <p class="small text-secondary mb-0 mt-2">
+                    Supported top-level keys are <code>hostnames</code> and <code>rules</code>. Leave empty to let the UI build a standard route.
+                  </p>
+                </div>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary w-100" type="submit">{% if is_edit %}Update Route{% else %}Save Route{% endif %}</button>
+                  <a class="btn btn-outline-secondary w-100" href="{% url 'index' %}">Cancel</a>
+                </div>
+              </form>
+              {% if not services %}
+                <p class="small text-danger mt-3 mb-0">No services were discovered from the cluster, so the dropdown cannot populate yet.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    {{ applications_json|json_script:"applications-data" }}
+    {{ services_json|json_script:"services-data" }}
+    <script>
+      (() => {
+        const applications = JSON.parse(document.getElementById("applications-data").textContent);
+        const services = JSON.parse(document.getElementById("services-data").textContent);
+        const originalRouteNameInput = document.getElementById("original_route_name");
+        const applicationSelect = document.getElementById("application");
+        const namespaceSelect = document.getElementById("service_namespace");
+        const serviceSelect = document.getElementById("service_name");
+        const portInput = document.getElementById("service_port");
+        const pathPrefixInput = document.getElementById("path_prefix");
+        const hostnameInput = document.getElementById("hostname");
+        const routeNameInput = document.getElementById("route_name");
+        let routeNameTouched = routeNameInput.value.trim().length > 0;
+
+        function sanitizeRouteName(value) {
+          return String(value || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, "-")
+            .replace(/-{2,}/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .slice(0, 63);
+        }
+
+        function deriveRouteName() {
+          const application = applicationSelect.value;
+          if (!application) {
+            return "";
+          }
+          const hostname = (hostnameInput.value || "default-host").trim().toLowerCase().replace(/\.+$/g, "");
+          const hostKey = hostname ? hostname.replace(/\./g, "-") : "default-host";
+          const path = (pathPrefixInput.value || `/${application}`).replace(/^\/+|\/+$/g, "");
+          const pathKey = path ? path.replace(/\//g, "-") : "root";
+          const port = (portInput.value || "80").trim();
+          return sanitizeRouteName(`${application}-${hostKey}-${pathKey}-${port}`);
+        }
+
+        function maybePopulateRouteName() {
+          if (routeNameTouched || originalRouteNameInput.value) {
+            return;
+          }
+          routeNameInput.value = deriveRouteName();
+        }
+
+        function firstNamespaceWithServices() {
+          return services.length > 0 ? services[0].namespace : "";
+        }
+
+        function firstServiceForNamespace(namespace) {
+          if (!namespace) {
+            return services[0] || null;
+          }
+          return services.find((service) => service.namespace === namespace) || services[0] || null;
+        }
+
+        function firstApplicationForNamespace(namespace) {
+          if (!namespace) {
+            return applications[0] || null;
+          }
+          return applications.find((application) => application.namespace === namespace) || applications[0] || null;
+        }
+
+        function selectService(serviceName, namespace) {
+          const option = [...serviceSelect.options].find(
+            (item) => item.value === serviceName && (item.dataset.namespace || "") === namespace,
+          );
+          if (!option) {
+            return;
+          }
+          option.selected = true;
+          serviceSelect.value = option.value;
+          portInput.value = String((services.find((item) => item.name === serviceName && item.namespace === namespace)?.ports || [{ port: 80 }])[0].port);
+        }
+
+        applicationSelect.addEventListener("change", () => {
+          const selectedOption = applicationSelect.selectedOptions[0];
+          const namespace = selectedOption ? selectedOption.dataset.namespace : "";
+          if (namespace) {
+            namespaceSelect.value = namespace;
+          }
+          if (!pathPrefixInput.value && applicationSelect.value) {
+            pathPrefixInput.value = `/${applicationSelect.value}`;
+          }
+          maybePopulateRouteName();
+        });
+
+        namespaceSelect.addEventListener("change", () => {
+          const service = firstServiceForNamespace(namespaceSelect.value);
+          if (service) {
+            selectService(service.name, service.namespace);
+          }
+        });
+
+        serviceSelect.addEventListener("change", () => {
+          const selectedOption = serviceSelect.selectedOptions[0];
+          const selectedNamespace = selectedOption ? selectedOption.dataset.namespace || namespaceSelect.value : namespaceSelect.value;
+          const service = services.find((item) => item.name === serviceSelect.value && item.namespace === selectedNamespace);
+          portInput.value = String((service?.ports || [{ port: 80 }])[0].port);
+          if (selectedNamespace) {
+            namespaceSelect.value = selectedNamespace;
+          }
+          maybePopulateRouteName();
+        });
+
+        pathPrefixInput.addEventListener("input", maybePopulateRouteName);
+        hostnameInput.addEventListener("input", maybePopulateRouteName);
+        portInput.addEventListener("input", maybePopulateRouteName);
+        routeNameInput.addEventListener("input", () => {
+          routeNameTouched = routeNameInput.value.trim().length > 0;
+        });
+
+        if (!originalRouteNameInput.value) {
+          const currentNamespace = services.some((service) => service.namespace === namespaceSelect.value)
+            ? namespaceSelect.value
+            : firstNamespaceWithServices() || namespaceSelect.value;
+          if (currentNamespace) {
+            namespaceSelect.value = currentNamespace;
+          }
+          const initialApplication = firstApplicationForNamespace(namespaceSelect.value);
+          if (initialApplication && !applicationSelect.value) {
+            applicationSelect.value = initialApplication.name;
+          }
+          if (!pathPrefixInput.value && applicationSelect.value) {
+            pathPrefixInput.value = `/${applicationSelect.value}`;
+          }
+          if (!hostnameInput.value) {
+            hostnameInput.value = window.location.hostname;
+          }
+          const initialService = firstServiceForNamespace(namespaceSelect.value);
+          if (initialService && !serviceSelect.value) {
+            selectService(initialService.name, initialService.namespace);
+          }
+          maybePopulateRouteName();
+        }
+      })();
+    </script>
+  </body>
+</html>

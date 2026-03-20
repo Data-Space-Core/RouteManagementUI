@@ -492,6 +492,22 @@ code {
   margin-top: 0.25rem;
 }
 
+.table-toolbar {
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.route-table-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.route-form-column {
+  margin: 0 auto;
+}
+
 .table-responsive {
   overflow-x: auto;
 }

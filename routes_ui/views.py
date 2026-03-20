@@ -218,6 +218,44 @@ def user_label(user: dict) -> str:
     return user.get("preferred_username") or user.get("email") or user.get("name") or "authenticated-user"
 
 
+def common_template_context(request: HttpRequest) -> dict[str, object]:
+    return {
+        "app_version": app_version(),
+        "default_hostname": default_hostname(),
+        "user": request.session.get("user", {}),
+        "user_label": user_label(request.session.get("user", {})),
+    }
+
+
+def build_route_form_context(
+    request: HttpRequest,
+    token: str,
+    route_name: str | None = None,
+) -> tuple[dict[str, object], str | None]:
+    cluster_catalog, discovery_error = load_cluster_catalog()
+    routes, api_error = load_routes(token)
+    form_route: dict[str, object] | None = None
+    if route_name:
+        form_route = next((route for route in routes if route.get("route_name") == route_name), None)
+        if form_route is None:
+            return {}, f"Route {route_name} was not found."
+
+    route_definition_text = ""
+    if form_route and form_route.get("route_definition") is not None:
+        route_definition_text = json.dumps(form_route["route_definition"], indent=2)
+
+    context = {
+        "api_error": api_error,
+        "discovery_error": discovery_error,
+        "is_edit": form_route is not None,
+        "form_route": form_route or {},
+        "route_definition_text": route_definition_text,
+        **common_template_context(request),
+        **cluster_catalog,
+    }
+    return context, None
+
+
 @require_GET
 def login_view(request: HttpRequest) -> HttpResponse:
     state = secrets.token_urlsafe(24)
@@ -298,22 +336,28 @@ def index(request: HttpRequest) -> HttpResponse:
         return render(request, "routes_ui/login.html")
 
     routes, api_error = load_routes(token)
-    cluster_catalog, discovery_error = load_cluster_catalog()
     return render(
         request,
         "routes_ui/index.html",
         {
             "routes": routes,
-            "routes_json": json.dumps(routes),
             "api_error": api_error,
-            "discovery_error": discovery_error,
-            "app_version": app_version(),
-            "default_hostname": default_hostname(),
-            "user": request.session.get("user", {}),
-            "user_label": user_label(request.session.get("user", {})),
-            **cluster_catalog,
+            **common_template_context(request),
         },
     )
+
+
+@require_GET
+def route_form(request: HttpRequest, route_name: str | None = None) -> HttpResponse:
+    token = ensure_authenticated(request)
+    if not token:
+        return render(request, "routes_ui/login.html")
+
+    context, route_error = build_route_form_context(request, token, route_name)
+    if route_error:
+        messages.error(request, route_error)
+        return redirect("index")
+    return render(request, "routes_ui/route_form.html", context)
 
 
 @require_POST
@@ -363,6 +407,10 @@ def create_route(request: HttpRequest) -> HttpResponse:
         messages.success(request, f"Route {route_label} saved.")
     else:
         messages.error(request, f"Route save failed: {response.text}")
+        redirect_name = "edit_route" if request.POST.get("original_route_name", "").strip() else "new_route"
+        if redirect_name == "edit_route":
+            return redirect(redirect_name, route_name=request.POST.get("original_route_name", "").strip())
+        return redirect(redirect_name)
     return redirect("index")
 
 
