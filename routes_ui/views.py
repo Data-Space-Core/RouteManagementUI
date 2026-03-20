@@ -4,6 +4,7 @@ import base64
 import hashlib
 import json
 import secrets
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.parse import urlencode
@@ -37,27 +38,87 @@ def access_token(request: HttpRequest) -> str | None:
     return request.session.get("access_token")
 
 
+def store_token_data(request: HttpRequest, token_data: dict[str, object]) -> None:
+    access_token_value = token_data.get("access_token")
+    if isinstance(access_token_value, str) and access_token_value:
+        request.session["access_token"] = access_token_value
+    refresh_token_value = token_data.get("refresh_token")
+    if isinstance(refresh_token_value, str) and refresh_token_value:
+        request.session["refresh_token"] = refresh_token_value
+    expires_in = token_data.get("expires_in")
+    try:
+        request.session["access_token_expires_at"] = int(time.time()) + int(expires_in)
+    except (TypeError, ValueError):
+        request.session["access_token_expires_at"] = int(time.time()) + 60
+
+
+def refresh_access_token(request: HttpRequest) -> str | None:
+    refresh_token = request.session.get("refresh_token")
+    if not isinstance(refresh_token, str) or not refresh_token:
+        return None
+    token_response = requests.post(
+        f"{keycloak_realm_base()}/protocol/openid-connect/token",
+        data={
+            "grant_type": "refresh_token",
+            "client_id": settings.KEYCLOAK_CLIENT_ID,
+            "client_secret": settings.KEYCLOAK_CLIENT_SECRET,
+            "refresh_token": refresh_token,
+        },
+        timeout=30,
+    )
+    if token_response.status_code != 200:
+        request.session.pop("access_token", None)
+        request.session.pop("refresh_token", None)
+        request.session.pop("access_token_expires_at", None)
+        return None
+    token_data = token_response.json()
+    store_token_data(request, token_data)
+    token = token_data.get("access_token")
+    return token if isinstance(token, str) else None
+
+
 def ensure_authenticated(request: HttpRequest) -> str | None:
     token = access_token(request)
-    if token:
-        return token
-    return None
+    expires_at = request.session.get("access_token_expires_at")
+    if isinstance(token, str) and token:
+        try:
+            if expires_at is None or int(expires_at) > int(time.time()) + 60:
+                return token
+        except (TypeError, ValueError):
+            return token
+    return refresh_access_token(request)
 
 
-def management_api_request(method: str, path: str, token: str, **kwargs: object) -> requests.Response:
+def management_api_request(method: str, path: str, request: HttpRequest, **kwargs: object) -> requests.Response:
+    token = ensure_authenticated(request)
+    if not token:
+        raise requests.HTTPError("authentication required")
     headers = kwargs.pop("headers", {})
     merged_headers = {"Authorization": f"Bearer {token}", **headers}
-    return requests.request(
+    response = requests.request(
         method,
         f"{settings.MANAGEMENT_API_BASE_URL}{path}",
         headers=merged_headers,
         timeout=60,
         **kwargs,
     )
+    if response.status_code not in (401, 403):
+        return response
+    refreshed_token = refresh_access_token(request)
+    if not refreshed_token or refreshed_token == token:
+        return response
+    retry_headers = {"Authorization": f"Bearer {refreshed_token}", **headers}
+    return requests.request(
+        method,
+        f"{settings.MANAGEMENT_API_BASE_URL}{path}",
+        headers=retry_headers,
+        timeout=60,
+        **kwargs,
+    )
 
 
-def load_routes(token: str) -> tuple[list[dict], str | None]:
-    response = management_api_request("GET", "/routes", token)
+def load_routes(request: HttpRequest) -> tuple[list[dict], str | None]:
+    response = management_api_request("GET", "/routes", request)
     if response.status_code == 200:
         return response.json(), None
     return [], response.text
@@ -229,11 +290,10 @@ def common_template_context(request: HttpRequest) -> dict[str, object]:
 
 def build_route_form_context(
     request: HttpRequest,
-    token: str,
     route_name: str | None = None,
 ) -> tuple[dict[str, object], str | None]:
     cluster_catalog, discovery_error = load_cluster_catalog()
-    routes, api_error = load_routes(token)
+    routes, api_error = load_routes(request)
     form_route: dict[str, object] | None = None
     if route_name:
         form_route = next((route for route in routes if route.get("route_name") == route_name), None)
@@ -335,8 +395,7 @@ def oidc_callback(request: HttpRequest) -> HttpResponse:
         messages.error(request, "Unable to load user profile.")
         return redirect("index")
 
-    request.session["access_token"] = token
-    request.session["refresh_token"] = token_data.get("refresh_token")
+    store_token_data(request, token_data)
     request.session["user"] = userinfo.json()
     request.session.pop("oidc_state", None)
     request.session.pop("oidc_code_verifier", None)
@@ -359,7 +418,7 @@ def index(request: HttpRequest) -> HttpResponse:
     if not token:
         return render(request, "routes_ui/login.html")
 
-    routes, api_error = load_routes(token)
+    routes, api_error = load_routes(request)
     return render(
         request,
         "routes_ui/index.html",
@@ -377,7 +436,7 @@ def route_form(request: HttpRequest, route_name: str | None = None) -> HttpRespo
     if not token:
         return render(request, "routes_ui/login.html")
 
-    context, route_error = build_route_form_context(request, token, route_name)
+    context, route_error = build_route_form_context(request, route_name)
     if route_error:
         messages.error(request, route_error)
         return redirect("index")
@@ -429,11 +488,11 @@ def create_route(request: HttpRequest) -> HttpResponse:
         response = management_api_request(
             "PUT",
             f"/routes/{request.POST.get('original_route_name', '').strip()}",
-            token,
+            request,
             json=payload,
         )
     else:
-        response = management_api_request("POST", "/routes", token, json=payload)
+        response = management_api_request("POST", "/routes", request, json=payload)
 
     if response.status_code in (200, 201):
         messages.success(request, f"Route {route_label} saved.")
@@ -452,7 +511,7 @@ def delete_route(request: HttpRequest, route_name: str) -> HttpResponse:
     if not token:
         return redirect("login")
 
-    response = management_api_request("DELETE", f"/routes/{route_name}", token)
+    response = management_api_request("DELETE", f"/routes/{route_name}", request)
     if response.status_code == 200:
         messages.success(request, f"Route {route_name} deleted.")
     else:
