@@ -137,6 +137,19 @@
                   <label class="form-label" for="path_prefix">Path prefix</label>
                   <input class="form-control" id="path_prefix" name="path_prefix" placeholder="/example-app" value="{{ form_route.path_prefix|default:'' }}">
                 </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    id="no_url_rewrite"
+                    name="no_url_rewrite"
+                    type="checkbox"
+                    {% if no_url_rewrite %}checked{% endif %}
+                  >
+                  <label class="form-check-label" for="no_url_rewrite">Disable URL rewrite for this path route</label>
+                  <p class="small text-secondary mb-0 mt-2">
+                    When enabled, the matched path prefix is forwarded to the backend unchanged. For example, <code>/v3/dataplanes</code> stays <code>/v3/dataplanes</code>.
+                  </p>
+                </div>
                 <div>
                   <label class="form-label" for="hostname">Hostname</label>
                   <input class="form-control" id="hostname" name="hostname" value="{{ form_route.hostname|default:default_hostname }}" placeholder="foo.dil.collab-cloud.eu">

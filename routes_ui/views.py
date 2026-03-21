@@ -330,6 +330,7 @@ def build_route_form_context(
         "discovery_error": discovery_error,
         "is_edit": form_route is not None,
         "form_route": form_route or {},
+        "no_url_rewrite": bool(form_route.get("no_url_rewrite")) if form_route else False,
         "selected_service_name": selected_service_name,
         "selected_service_namespace": selected_service_namespace,
         "route_definition_text": route_definition_text,
@@ -464,6 +465,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
         "service_namespace": request.POST.get("service_namespace", "default").strip() or "default",
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
         "cors_allowed_origins": cors_allowed_origins,
+        "no_url_rewrite": request.POST.get("no_url_rewrite") == "on",
     }
     path_prefix = request.POST.get("path_prefix", "").strip()
     hostname = request.POST.get("hostname", "").strip()
