@@ -91,6 +91,9 @@
                 <div>
                   <label class="form-label" for="route_name">Route name</label>
                   <input class="form-control" id="route_name" name="route_name" placeholder="issuer-admin" value="{{ form_route.route_name|default:'' }}">
+                  <p class="small text-secondary mb-0 mt-2">
+                    Optional. Must be unique. If you reuse an existing route name, that route will be updated instead of creating a new one.
+                  </p>
                 </div>
                 <div>
                   <label class="form-label" for="service_name">Service name</label>
