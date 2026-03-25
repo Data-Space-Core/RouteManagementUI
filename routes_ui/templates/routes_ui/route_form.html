@@ -263,7 +263,7 @@
                     placeholder='Optional YAML or JSON object, for example: {"hostnames":["app.example.com"],"rules":[...]}'
                   >{{ route_definition_text }}</textarea>
                   <p class="small text-secondary mb-0 mt-2">
-                    Supported top-level keys are <code>hostnames</code> and <code>rules</code>. Leave empty to let the UI build a standard route.
+                    Supported top-level keys are <code>hostnames</code> and <code>rules</code>. Leave empty to let the UI build a standard route. If you configure public subpaths above, this advanced definition will not be submitted because the backend does not support both together.
                   </p>
                 </div>
                 <div class="d-grid gap-2">

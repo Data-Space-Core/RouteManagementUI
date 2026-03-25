@@ -530,7 +530,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
         payload["hostname"] = hostname
     if host_service_name:
         payload["host_service_name"] = host_service_name
-    if route_definition_text:
+    if route_definition_text and not public_path_prefixes:
         payload["route_definition_text"] = route_definition_text
     if oidc_enabled:
         payload["oidc"] = {
