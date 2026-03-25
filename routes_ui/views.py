@@ -314,6 +314,14 @@ def build_route_form_context(
             origin.replace("https://", "", 1) if isinstance(origin, str) else str(origin)
             for origin in cors_allowed_origins
         )
+    public_path_prefixes_text = ""
+    if form_route:
+        public_path_prefixes = form_route.get("public_path_prefixes") or []
+        public_path_prefixes_text = "\n".join(
+            path_prefix
+            for path_prefix in public_path_prefixes
+            if isinstance(path_prefix, str)
+        )
     form_oidc = form_route.get("oidc") if form_route else None
     oidc_enabled = bool(form_oidc.get("enabled")) if isinstance(form_oidc, dict) else False
     oidc_issuer = (
@@ -357,6 +365,7 @@ def build_route_form_context(
         "selected_service_namespace": selected_service_namespace,
         "route_definition_text": route_definition_text,
         "cors_allowed_origins_text": cors_allowed_origins_text,
+        "public_path_prefixes_text": public_path_prefixes_text,
         "oidc_enabled": oidc_enabled,
         "oidc_issuer": oidc_issuer,
         "oidc_client_id": oidc_client_id,
@@ -484,6 +493,13 @@ def create_route(request: HttpRequest) -> HttpResponse:
         for item in line.split(",")
         if item.strip()
     ]
+    raw_public_path_prefixes = request.POST.get("public_path_prefixes_text", "")
+    public_path_prefixes = [
+        item.strip()
+        for line in raw_public_path_prefixes.splitlines()
+        for item in line.split(",")
+        if item.strip()
+    ]
     payload = {
         "application": request.POST.get("application", "").strip(),
         "route_name": request.POST.get("route_name", "").strip(),
@@ -492,6 +508,7 @@ def create_route(request: HttpRequest) -> HttpResponse:
         "service_namespace": request.POST.get("service_namespace", "default").strip() or "default",
         "service_port": int(request.POST.get("service_port", "80").strip() or "80"),
         "cors_allowed_origins": cors_allowed_origins,
+        "public_path_prefixes": public_path_prefixes,
         "no_url_rewrite": request.POST.get("no_url_rewrite") == "on",
     }
     oidc_enabled = request.POST.get("oidc_enabled") == "on"

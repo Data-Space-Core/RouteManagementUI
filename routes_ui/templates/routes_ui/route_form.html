@@ -136,6 +136,9 @@
                 <div>
                   <label class="form-label" for="path_prefix">Path prefix</label>
                   <input class="form-control" id="path_prefix" name="path_prefix" placeholder="/example-app" value="{{ form_route.path_prefix|default:'' }}">
+                  <p class="small text-secondary mb-0 mt-2">
+                    This is the main route path. If OIDC is enabled, this is the protected path and any public subpaths below can be listed separately.
+                  </p>
                 </div>
                 <div class="form-check">
                   <input
@@ -186,6 +189,18 @@
                       Require users to sign in through your OIDC provider before this route is served. This is the right choice for Keycloak-backed browser applications and admin interfaces.
                     </p>
                     <div class="vstack gap-3 mt-3" id="oidc-fields">
+                      <div>
+                        <label class="form-label" for="public_path_prefixes_text">Public subpaths</label>
+                        <textarea
+                          class="form-control route-definition-editor"
+                          id="public_path_prefixes_text"
+                          name="public_path_prefixes_text"
+                          placeholder="/dashboard/config"
+                        >{{ public_path_prefixes_text }}</textarea>
+                        <p class="small text-secondary mb-0 mt-2">
+                          Enter one more-specific path per line, or separate multiple values with commas. These paths stay public while the main path above remains OIDC-protected.
+                        </p>
+                      </div>
                       <div>
                         <label class="form-label" for="oidc_issuer">OIDC issuer URL</label>
                         <input

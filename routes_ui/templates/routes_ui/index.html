@@ -80,7 +80,17 @@
                   <tr>
                     <td class="fw-semibold">{{ route.application }}</td>
                     <td>{{ route.hostname }}</td>
-                    <td><code>{{ route.path_prefix }}</code></td>
+                    <td>
+                      <div><code>{{ route.path_prefix }}</code></div>
+                      {% if route.public_path_prefixes %}
+                        <div class="small text-secondary mt-1">
+                          Public:
+                          {% for path in route.public_path_prefixes %}
+                            <code>{{ path }}</code>{% if not forloop.last %}, {% endif %}
+                          {% endfor %}
+                        </div>
+                      {% endif %}
+                    </td>
                     <td>
                       {% if route.oidc %}
                         <span class="badge rounded-pill text-bg-primary">OIDC</span>

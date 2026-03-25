@@ -8,6 +8,7 @@
 - serves the tenant console at `https://tenant-a.dil.collab-cloud.eu/route`
 - uses the `ManagementAPI` under `https://dil.collab-cloud.eu/management`
 - supports listing, creating, editing, and deleting tenant routes
+- supports OIDC-protected main paths with separate public subpaths for bootstrap or static assets
 - supports optional advanced route definitions using YAML or JSON with `hostnames` and `rules`
 
 ## Build
