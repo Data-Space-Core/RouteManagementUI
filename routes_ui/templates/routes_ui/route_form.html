@@ -170,6 +170,75 @@
                     Enter one hostname per line, or separate multiple values with commas. The API will allow all standard HTTP methods automatically and store origins as <code>https://...</code>.
                   </p>
                 </div>
+                <div class="card border-light-subtle bg-light">
+                  <div class="card-body">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        id="oidc_enabled"
+                        name="oidc_enabled"
+                        type="checkbox"
+                        {% if oidc_enabled %}checked{% endif %}
+                      >
+                      <label class="form-check-label fw-semibold" for="oidc_enabled">Secure route with OIDC</label>
+                    </div>
+                    <p class="small text-secondary mb-0 mt-2">
+                      Require users to sign in through your OIDC provider before this route is served. This is the right choice for Keycloak-backed browser applications and admin interfaces.
+                    </p>
+                    <div class="vstack gap-3 mt-3" id="oidc-fields">
+                      <div>
+                        <label class="form-label" for="oidc_issuer">OIDC issuer URL</label>
+                        <input
+                          class="form-control"
+                          id="oidc_issuer"
+                          name="oidc_issuer"
+                          value="{{ oidc_issuer }}"
+                          placeholder="https://dil.collab-cloud.eu/auth/realms/gx-participant1"
+                        >
+                      </div>
+                      <div>
+                        <label class="form-label" for="oidc_client_id">OIDC client ID</label>
+                        <input
+                          class="form-control"
+                          id="oidc_client_id"
+                          name="oidc_client_id"
+                          value="{{ oidc_client_id }}"
+                          placeholder="dashboard"
+                        >
+                      </div>
+                      <div>
+                        <label class="form-label" for="oidc_client_secret">OIDC client secret</label>
+                        <input
+                          class="form-control"
+                          id="oidc_client_secret"
+                          name="oidc_client_secret"
+                          type="password"
+                          placeholder="{% if oidc_client_secret_configured %}Leave blank to keep the stored secret{% else %}Paste the Keycloak client secret{% endif %}"
+                        >
+                        <p class="small text-secondary mb-0 mt-2">
+                          {% if oidc_client_secret_configured %}
+                            A client secret is already stored for this route. Leave this blank to keep it, or enter a new one to rotate it.
+                          {% else %}
+                            The client secret is stored server-side in Kubernetes so it does not need to be embedded in the route definition.
+                          {% endif %}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="form-label" for="oidc_scopes_text">OIDC scopes</label>
+                        <input
+                          class="form-control"
+                          id="oidc_scopes_text"
+                          name="oidc_scopes_text"
+                          value="{{ oidc_scopes_text }}"
+                          placeholder="openid profile email"
+                        >
+                        <p class="small text-secondary mb-0 mt-2">
+                          Separate scopes with spaces or commas. Discovery endpoints are resolved from the issuer URL automatically.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div>
                   <label class="form-label" for="route_definition_text">Advanced route definition</label>
                   <textarea
@@ -209,7 +278,16 @@
         const pathPrefixInput = document.getElementById("path_prefix");
         const hostnameInput = document.getElementById("hostname");
         const routeNameInput = document.getElementById("route_name");
+        const oidcEnabledInput = document.getElementById("oidc_enabled");
+        const oidcFields = document.getElementById("oidc-fields");
         let routeNameTouched = routeNameInput.value.trim().length > 0;
+
+        function syncOidcFields() {
+          if (!oidcFields || !oidcEnabledInput) {
+            return;
+          }
+          oidcFields.style.display = oidcEnabledInput.checked ? "flex" : "none";
+        }
 
         function sanitizeRouteName(value) {
           return String(value || "")
@@ -303,6 +381,7 @@
         pathPrefixInput.addEventListener("input", maybePopulateRouteName);
         hostnameInput.addEventListener("input", maybePopulateRouteName);
         portInput.addEventListener("input", maybePopulateRouteName);
+        oidcEnabledInput.addEventListener("change", syncOidcFields);
         routeNameInput.addEventListener("input", () => {
           routeNameTouched = routeNameInput.value.trim().length > 0;
         });
@@ -330,6 +409,7 @@
           }
           maybePopulateRouteName();
         }
+        syncOidcFields();
       })();
     </script>
   </body>

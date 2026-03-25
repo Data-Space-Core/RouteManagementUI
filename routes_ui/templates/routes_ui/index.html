@@ -68,6 +68,7 @@
                   <th>Application</th>
                   <th>Hostname</th>
                   <th>Path</th>
+                  <th>Security</th>
                   <th>Backend</th>
                   <th>Namespace</th>
                   <th>Port</th>
@@ -80,6 +81,13 @@
                     <td class="fw-semibold">{{ route.application }}</td>
                     <td>{{ route.hostname }}</td>
                     <td><code>{{ route.path_prefix }}</code></td>
+                    <td>
+                      {% if route.oidc %}
+                        <span class="badge rounded-pill text-bg-primary">OIDC</span>
+                      {% else %}
+                        <span class="text-secondary">Open</span>
+                      {% endif %}
+                    </td>
                     <td>{{ route.backend_service_name }}</td>
                     <td>{{ route.backend_namespace }}</td>
                     <td>{{ route.service_port }}</td>
@@ -100,7 +108,7 @@
                   </tr>
                 {% empty %}
                   <tr>
-                    <td colspan="7" class="text-center py-4 text-secondary">No tenant routes found.</td>
+                    <td colspan="8" class="text-center py-4 text-secondary">No tenant routes found.</td>
                   </tr>
                 {% endfor %}
               </tbody>

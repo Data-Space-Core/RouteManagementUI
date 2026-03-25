@@ -28,6 +28,10 @@ def callback_url() -> str:
     return f"{settings.SITE_URL}/oidc/callback/"
 
 
+def default_route_oidc_issuer() -> str:
+    return keycloak_realm_base()
+
+
 def build_pkce_pair() -> tuple[str, str]:
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("ascii")).digest()).rstrip(b"=").decode("ascii")
@@ -310,6 +314,24 @@ def build_route_form_context(
             origin.replace("https://", "", 1) if isinstance(origin, str) else str(origin)
             for origin in cors_allowed_origins
         )
+    form_oidc = form_route.get("oidc") if form_route else None
+    oidc_enabled = bool(form_oidc.get("enabled")) if isinstance(form_oidc, dict) else False
+    oidc_issuer = (
+        str(form_oidc.get("issuer") or "")
+        if isinstance(form_oidc, dict)
+        else default_route_oidc_issuer()
+    )
+    oidc_client_id = str(form_oidc.get("client_id") or "") if isinstance(form_oidc, dict) else ""
+    oidc_scopes_text = (
+        " ".join(scope for scope in (form_oidc.get("scopes") or []) if isinstance(scope, str))
+        if isinstance(form_oidc, dict)
+        else settings.KEYCLOAK_SCOPE
+    )
+    oidc_client_secret_configured = (
+        bool(form_oidc.get("client_secret_configured"))
+        if isinstance(form_oidc, dict)
+        else False
+    )
 
     selected_service_name = ""
     selected_service_namespace = ""
@@ -335,6 +357,11 @@ def build_route_form_context(
         "selected_service_namespace": selected_service_namespace,
         "route_definition_text": route_definition_text,
         "cors_allowed_origins_text": cors_allowed_origins_text,
+        "oidc_enabled": oidc_enabled,
+        "oidc_issuer": oidc_issuer,
+        "oidc_client_id": oidc_client_id,
+        "oidc_scopes_text": oidc_scopes_text,
+        "oidc_client_secret_configured": oidc_client_secret_configured,
         **common_template_context(request),
         **cluster_catalog,
     }
@@ -467,6 +494,15 @@ def create_route(request: HttpRequest) -> HttpResponse:
         "cors_allowed_origins": cors_allowed_origins,
         "no_url_rewrite": request.POST.get("no_url_rewrite") == "on",
     }
+    oidc_enabled = request.POST.get("oidc_enabled") == "on"
+    oidc_issuer = request.POST.get("oidc_issuer", "").strip()
+    oidc_client_id = request.POST.get("oidc_client_id", "").strip()
+    oidc_client_secret = request.POST.get("oidc_client_secret", "").strip()
+    oidc_scopes = [
+        item.strip()
+        for item in request.POST.get("oidc_scopes_text", "").replace(",", " ").split()
+        if item.strip()
+    ]
     path_prefix = request.POST.get("path_prefix", "").strip()
     hostname = request.POST.get("hostname", "").strip()
     host_service_name = request.POST.get("host_service_name", "").strip()
@@ -479,6 +515,15 @@ def create_route(request: HttpRequest) -> HttpResponse:
         payload["host_service_name"] = host_service_name
     if route_definition_text:
         payload["route_definition_text"] = route_definition_text
+    if oidc_enabled:
+        payload["oidc"] = {
+            "enabled": True,
+            "issuer": oidc_issuer,
+            "client_id": oidc_client_id,
+            "scopes": oidc_scopes,
+        }
+        if oidc_client_secret:
+            payload["oidc"]["client_secret"] = oidc_client_secret
 
     if not payload["route_name"]:
         payload.pop("route_name")
