@@ -248,6 +248,7 @@ def load_cluster_catalog() -> tuple[dict[str, object], str | None]:
             "initial_namespace": initial_namespace,
             "initial_service_name": initial_service["name"] if initial_service else "",
             "initial_ports": initial_ports,
+            "initial_service_port": initial_ports[0]["port"] if initial_ports else 80,
             "applications_json": json.dumps(applications),
             "services_json": json.dumps(services),
         }, None
